@@ -1,14 +1,15 @@
 import argparse
 import yaml
 import pandas as pd
+import sys
 import os
 import subprocess
 from jinja2 import Template
 
-from helpers.generate_source_model_docs import *
-from helpers.generate_model_run_script import *
-from helpers.general import *
-from helpers.common import *
+from dbt_utils.scripts.helpers.generate_model_docs import generate_model_docs, generate_ftd_model_docs
+from dbt_utils.scripts.helpers.generate_model_run_script import generate_dbt_run_script
+from dbt_utils.scripts.helpers.general import *
+from dbt_utils.scripts.helpers.common import *
 
 
 def validate_study_config(study_config):
@@ -133,7 +134,7 @@ def copy_csv_into_new_table(schema, table_name, csv_file, db_host, db_user, db_n
     except Exception as ex:
         print(f"An unexpected error occurred: {ex}")
 
-def main(yaml_study_config):
+def main(yaml_study_config, ftd_tables):
     study_config = read_file(yaml_study_config)
 
     gen_dir = f"data/{study_config['study_id']}" # Stores all generated docs for the new model
@@ -142,7 +143,7 @@ def main(yaml_study_config):
     models_dir = f"{sources_dir}/models" # Used for creating table dirs per data dictionary
     outer_docs_dir = f"{sources_dir}/docs" # Used for storing model level docs
     # table specific docs dir created in generate_column_descriptions
-    ftd_dir = f"{gen_dir}/sources/{study_config['study_id']}" # Base study model
+    ftd_dir = f"{gen_dir}/ftd/{study_config['study_id']}" # ftd base study model
 
     dirs = [gen_dir, scripts_dir, sources_dir, models_dir, outer_docs_dir, ftd_dir]
 
@@ -155,26 +156,32 @@ def main(yaml_study_config):
 
     for table_id, table_info in study_config["data_dictionary"].items():
         dd_path = table_info["table_details"]
-        # column_definitions = extract_table_schema(dd_path, type_mapping)
+        column_definitions = extract_table_schema(dd_path, type_mapping)
         
-    #     generate_new_table(schema, table_id, column_definitions, DB_NAME)
-    #     print(f"Table {schema}.{table_id} created successfully.")
+        generate_new_table(schema, table_id, column_definitions, DB_NAME)
+        print(f"Table {schema}.{table_id} created successfully.")
 
-    # for table_id, data_info in study_config["data_files"].items():
-    #     for csv_file in data_info["filename"]:
-    #         copy_csv_into_new_table(schema, table_id, csv_file, DB_HOST, DB_USER, DB_NAME)
-    #         print(f"Data from {csv_file} loaded into {schema}.{table_id}.")
+    for table_id, data_info in study_config["data_files"].items():
+        for csv_file in data_info["filename"]:
+            copy_csv_into_new_table(schema, table_id, csv_file, DB_HOST, DB_USER, DB_NAME)
+            print(f"Data from {csv_file} loaded into {schema}.{table_id}.")
 
         # TODO: DB_NAME and type mapping to common location/var
-        generate_model_docs(study_config, models_dir, outer_docs_dir, DB_NAME, type_mapping)
+        generate_model_docs(study_config, sources_dir, models_dir, outer_docs_dir, DB_NAME, type_mapping)
+        
+    generate_ftd_model_docs(study_config, ftd_dir)
 
-    generate_dbt_run_script(study_config, scripts_dir)
+    generate_dbt_run_script(study_config, scripts_dir, ftd_tables)
+
+    print(f"END SCRIPT")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Initialize DBT transformation for study data.")
     
     parser.add_argument("-y", "--yaml", required=True, help="Path to the YAML study_configuration file")
-    
-    args = parser.parse_args()
+    parser.add_argument("-t", "--tables", nargs="+", help="List of ftd tables", default=[])
 
-    main(yaml_study_config=args.yaml)
+    args = parser.parse_args()
+    print(f'ftd_tables = {args.tables}')
+
+    main(yaml_study_config=args.yaml, ftd_tables=args.tables)

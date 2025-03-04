@@ -1,8 +1,6 @@
 import yaml
 import os
-from general import *
-import common as common
-
+from dbt_utils.scripts.helpers.general import *
 
 def generate_run_command(operation, model, args=None):
     """Generates a dbt run command for models or macros with optional arguments."""
@@ -48,7 +46,7 @@ def generate_run_command(operation, model, args=None):
     
     return op
 
-def generate_dbt_run_script(study_config, scripts_dir):
+def generate_dbt_run_script(study_config, scripts_dir, ftd_tables):
     """Generates a dbt run Bash script dynamically based on a YAML configuration."""
     study_id = study_config.get("study_id", "study")
     
@@ -69,20 +67,11 @@ def generate_dbt_run_script(study_config, scripts_dir):
 
     commands_list.append("# Run FTD tables") 
 
-    ftd_tables_var_name = f"{study_id}_ftd_tables"
-
-    if hasattr(common, ftd_tables_var_name):
-        study_ftd_tables = getattr(common, ftd_tables_var_name)
-    else:
-        raise AttributeError(f"Error: {ftd_tables_var_name} not found in common.py")
-
-    # Run FTD tables
-    for table in study_ftd_tables:  
+    for table in ftd_tables:  
         commands_list.append(generate_run_command("model", f"{study_id}_ftd_{table}"))
 
     commands_list.append("# Run Target tables") 
 
-    # Target table mapping
     tgt_tables = {
         "participant": {"source_table": f"{study_id}_ftd_participant", "target_schema": f"{study_id}_tgt_data"},
         "condition": {"source_table": f"{study_id}_ftd_condition", "target_schema": f"{study_id}_tgt_data"},

@@ -1,0 +1,7 @@
+variable_name,variable_description,data_type,enumerated_values,units,min,max
+new_key,Unique key for the FTD record,String,,,,
+study_code,Unique identifier for the study,String,,,,
+participant_global_id,Unique global identifier for the participant,String,,,,
+participant_external_id,Study-specific participant identifier,String,,,,
+age_first_engagement,Age in days when the participant first engaged with the study,Integer,days,,
+first_engagement_event,Type of event marking first engagement (e.g. Enrollment Screening),String,,,,

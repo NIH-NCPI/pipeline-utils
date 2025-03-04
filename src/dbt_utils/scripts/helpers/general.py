@@ -1,10 +1,18 @@
 import os
 import yaml
 import pandas as pd
+import importlib.resources as pkg_resources
 
-def read_file(filepath):
+def read_file(filepath, pkg_file=False):
+
+    if pkg_file:
+        package_root = pkg_resources.files("dbt_utils")
+        if not isinstance(filepath, str):  
+            raise TypeError(f"Expected a string for filepath, but got {type(filepath)}")  
+        filepath = package_root / filepath
+
     if not os.path.exists(filepath):
-        raise Exception(f"File does not exist: {filepath}")
+        raise FileNotFoundError(f"File does not exist: {filepath}")
 
     file_ext = os.path.splitext(filepath)[-1].lower()
 
@@ -23,6 +31,7 @@ def read_file(filepath):
 
     else:
         raise ValueError(f"Unsupported file type: {file_ext}")
+
     
 def write_file(target_dir, filename, data):
     """Creates a directory for the table and writes a YAML, SQL, BASH, or Markdown file based on the extension."""

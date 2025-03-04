@@ -4,7 +4,6 @@ DB_HOST = "localhost"
 DB_USER = "gutmanb"
 DB_NAME = "default_db"
 
-
 # Map common data types to PostgreSQL types
 type_mapping = {
     "string": "TEXT",
@@ -14,4 +13,4 @@ type_mapping = {
     "datetime": "TIMESTAMP"
 }
 
-m00m00_ftd_tables = ['participant','condition','event','measurement']
+FTD_CONFIG = 'data/ftd_data_dictionaries/ftd_study.yaml'
