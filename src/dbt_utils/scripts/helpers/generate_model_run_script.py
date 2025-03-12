@@ -1,5 +1,6 @@
 import yaml
 import os
+import json
 from dbt_utils.scripts.helpers.general import *
 
 def generate_run_command(operation, model, args=None):
@@ -38,15 +39,15 @@ def generate_run_command(operation, model, args=None):
         op = f'dbt run-operation {model} {all_args}'.strip()
     
     elif operation == 'model':
-        all_args = f'--vars "{' '.join(f'{k}: {v}' for k, v in args.items())}"' if args else ""
-        op = f'dbt run --select {model} {all_args}'.strip()
+        all_args = f"--vars '{json.dumps(args)}'" if args else ""
+        op = f'dbt run --select +{model} {all_args}'.strip()
 
     else:
         raise ValueError("Invalid operation type. Use 'macro' or 'model'.")
     
     return op
 
-def generate_dbt_run_script(study_config, scripts_dir, ftd_tables):
+def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
     """Generates a dbt run Bash script dynamically based on a YAML configuration."""
     study_id = study_config.get("study_id", "study")
     
@@ -55,20 +56,19 @@ def generate_dbt_run_script(study_config, scripts_dir, ftd_tables):
     "set -e  # Exit on error",
     "dbt clean",
     'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
-    "# Run raw and staging tables"
 ]
 
-    for table_id, table_info in study_config["data_dictionary"].items():
-        raw_table_id = f"{study_id}_raw_{table_id}"
-        stg_table_id = f"{study_id}_stg_{table_id}"
+    # for table_id, table_info in study_config["data_dictionary"].items():
+    #     raw_table_id = f"{study_id}_raw_{table_id}"
+    #     stg_table_id = f"{study_id}_stg_{table_id}"
 
-        commands_list.append(generate_run_command("model", raw_table_id)) 
-        commands_list.append(generate_run_command("model", stg_table_id)) 
+    #     commands_list.append(generate_run_command("model", raw_table_id)) 
+    #     commands_list.append(generate_run_command("model", stg_table_id)) 
 
-    commands_list.append("# Run FTD tables") 
+    # commands_list.append("# Run FTD tables") 
 
-    for table in ftd_tables:  
-        commands_list.append(generate_run_command("model", f"{study_id}_ftd_{table}"))
+    # for table_id, table_info in ftd_config["data_dictionary"].items():
+    #     commands_list.append(generate_run_command("model", f"{study_id}_ftd_{table_id}"))
 
     commands_list.append("# Run Target tables") 
 
@@ -96,7 +96,7 @@ def generate_dbt_run_script(study_config, scripts_dir, ftd_tables):
 
     # Final script content
     data = "\n".join(commands_list) + "\n"
-    filename = f"run_{study_id}.sh"
+    filepath = scripts_dir / f"run_{study_id}.sh"
 
     # Write the script to a file
-    write_file(scripts_dir, filename, data)
+    write_file(filepath, data)

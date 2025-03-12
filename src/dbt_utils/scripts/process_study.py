@@ -5,6 +5,8 @@ import sys
 import os
 import subprocess
 from jinja2 import Template
+import pdb
+import json
 
 from dbt_utils.scripts.helpers.generate_model_docs import generate_model_docs, generate_ftd_model_docs
 from dbt_utils.scripts.helpers.generate_model_run_script import generate_dbt_run_script
@@ -12,7 +14,7 @@ from dbt_utils.scripts.helpers.general import *
 from dbt_utils.scripts.helpers.common import *
 
 
-def validate_study_config(study_config):
+def validate_study_config(study_config, study_yml_path):
     """
     Validates the study configuration (YAML) for correctness.
      - Must have a data_dictionary(DD) section
@@ -43,9 +45,10 @@ def validate_study_config(study_config):
             raise ValueError(f"Error: Missing details for table_id: {table_id}")
 
         filename = table_info["table_details"]
+        full_file_path = study_yml_path / filename
 
-        if not os.path.exists(filename):
-            raise ValueError(f"Error: Specified data dictionary file does not exist: {filename}")
+        if not os.path.exists(full_file_path):
+            raise ValueError(f"Error: Specified data dictionary file does not exist: {full_file_path}")
 
     # Ensure each table_id in data_files matches one in data_dictionary
     for table_id, data_info in data_files.items():
@@ -57,8 +60,9 @@ def validate_study_config(study_config):
 
         # Validate that all file paths exist
         for file in data_info["filename"]:
-            if not os.path.exists(file):
-                raise ValueError(f"Error: Data file '{file}' does not exist for table_id '{table_id}'.")
+            full_file_path = study_yml_path / file
+            if not os.path.exists(full_file_path):
+                raise ValueError(f"Error: Data file {full_file_path} does not exist for table_id {table_id}.")
 
     print("Validation passed: Study configuration is valid.")
 
@@ -98,10 +102,33 @@ def generate_new_table(schema, table_name, column_defs, db_name):
         subprocess.run(
             [
                 "dbt",
+                "clean"
+            ],
+            check=True,
+        )
+
+        subprocess.run(
+            [
+                "dbt",
+                "deps"
+            ],
+            check=True,
+        )
+        print(f"Ran dbt clean and deps")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing DBT operation: {e}")
+    except Exception as ex:
+        print(f"An unexpected error occurred: {ex}")
+
+    try:
+        subprocess.run(
+            [
+                "dbt",
                 "run-operation",
                 "run_sql",
                 "--args",
-                f'{{"sql": "{sql_query.replace("\"", "\\\"")}"}}',
+                json.dumps({"sql": sql_query}),
             ],
             check=True,
         )
@@ -134,44 +161,62 @@ def copy_csv_into_new_table(schema, table_name, csv_file, db_host, db_user, db_n
     except Exception as ex:
         print(f"An unexpected error occurred: {ex}")
 
-def main(yaml_study_config, ftd_tables):
-    study_config = read_file(yaml_study_config)
+def main(study_id):
+    
+    # Set paths
+    paths = get_paths(study_id)
+    # If project dirs don't exist create them.
+    for var, path in paths.items():
+        if var.endswith("dir"):
+            path.mkdir(parents=True, exist_ok=True)
+            print(f'created {path}')
+    validate_paths(paths)
 
-    gen_dir = f"data/{study_config['study_id']}" # Stores all generated docs for the new model
-    scripts_dir = f"{gen_dir}/scripts" # Stores the run scripts. These should be stored in the base project scripts dir.
-    sources_dir = f"{gen_dir}/sources/{study_config['study_id']}" # Base study model
-    models_dir = f"{sources_dir}/models" # Used for creating table dirs per data dictionary
-    outer_docs_dir = f"{sources_dir}/docs" # Used for storing model level docs
-    # table specific docs dir created in generate_column_descriptions
-    ftd_dir = f"{gen_dir}/ftd/{study_config['study_id']}" # ftd base study model
+    study_config = read_file(paths["study_yml_path"])
 
-    dirs = [gen_dir, scripts_dir, sources_dir, models_dir, outer_docs_dir, ftd_dir]
-
-    for dir in dirs:
-        os.makedirs(dir, exist_ok=True)
-
-    validate_study_config(study_config)
+    print(f"Start validation of {study_id} config")
+    validate_study_config(study_config, paths["dbtp_study_data_dir"])
+    print("End validation of study config")
 
     schema = f"{study_config['study_id']}_raw_data"
 
     for table_id, table_info in study_config["data_dictionary"].items():
         dd_path = table_info["table_details"]
-        column_definitions = extract_table_schema(dd_path, type_mapping)
-        
+        full_dd_path = paths["dbtp_study_data_dir"] / dd_path
+        column_definitions = extract_table_schema(full_dd_path, type_mapping)
+        print(f"Start table creation {table_id}")
+        # pdb.set_trace() 
         generate_new_table(schema, table_id, column_definitions, DB_NAME)
-        print(f"Table {schema}.{table_id} created successfully.")
+        print(f"End table creation {schema}.{table_id}")
 
     for table_id, data_info in study_config["data_files"].items():
         for csv_file in data_info["filename"]:
-            copy_csv_into_new_table(schema, table_id, csv_file, DB_HOST, DB_USER, DB_NAME)
+            full_csv_path = paths["dbtp_study_data_dir"] / csv_file
+            copy_csv_into_new_table(schema, table_id, full_csv_path, DB_HOST, DB_USER, DB_NAME)
             print(f"Data from {csv_file} loaded into {schema}.{table_id}.")
 
         # TODO: DB_NAME and type mapping to common location/var
-        generate_model_docs(study_config, sources_dir, models_dir, outer_docs_dir, DB_NAME, type_mapping)
+        generate_model_docs(study_config,
+                            paths,
+                            DB_NAME,
+                            type_mapping
+                            )
         
-    generate_ftd_model_docs(study_config, ftd_dir)
+    generate_ftd_model_docs(study_config,
+                            paths["dbtp_study_data_dir"],
+                            paths["ftd_study_data_dir"],
+                            paths["ftd_study_yml_path"],
+                            paths["dbtp_ftdc_dir"],
+                            paths["dbtp_ftdc_study_docs_dir"],
+                            paths["dbtp_ftdc_study_dir"],
+                            paths["utils_ftd_study_data_dir"],
+                            paths["utils_ftd_study_yml_path"],
+                            paths["ftd_study_yml_path"]
+                            )
+    
+    ftd_config = read_file(paths["ftd_study_yml_path"])
 
-    generate_dbt_run_script(study_config, scripts_dir, ftd_tables)
+    generate_dbt_run_script(study_config, ftd_config, scripts_dir=paths["dbtp_scripts_dir"])
 
     print(f"END SCRIPT")
 
@@ -179,9 +224,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Initialize DBT transformation for study data.")
     
     parser.add_argument("-y", "--yaml", required=True, help="Path to the YAML study_configuration file")
-    parser.add_argument("-t", "--tables", nargs="+", help="List of ftd tables", default=[])
 
     args = parser.parse_args()
-    print(f'ftd_tables = {args.tables}')
 
-    main(yaml_study_config=args.yaml, ftd_tables=args.tables)
+    main(yaml_study_config=args.yaml)

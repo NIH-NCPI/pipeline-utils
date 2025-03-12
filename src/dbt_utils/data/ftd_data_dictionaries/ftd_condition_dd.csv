@@ -1,27 +1,27 @@
-variable_name,variable_description,data_type,enumerated_values,units,min,max
-new_key,Unique key for the FTD record,String,,,,
-down_syndrome_status,Down syndrome status of the participant,String,,,,
-age_first_engagement,Age in days at first engagement,Integer,,,,
-first_engagement_event,Type of first engagement event,String,,,,
-vital_status,Vital status of the participant (e.g. Alive Deceased),String,,,,
-age_last_vital_status,Age in days at last recorded vital status,Integer,,,,
-study_code,Unique identifier for the study,String,,,,
-participant_global_id,Unique global identifier for the participant,String,,,,
-participant_external_id,Study-specific participant identifier,String,,,,
-event_id,Unique identifier for the event,Integer,,,,
-event_type,Type of event (e.g.Visit Diagnosis),String,,,,
-condition_source_text,Original text describing condition or measure,String,,,,
-age_at_condition,Age in days when the observation was recorded,Integer,,,,
-condition_interpretation,How the condition was observed or assessed,String,,,,
-condition_status,Status of the condition (e.g. History Of Active),String,,,,
-condition_data_source,Source of the condition data (e.g. Self-Reported),String,,,,
-hpo_label,Human Phenotype Ontology label,String,,,,
-hpo_code,Human Phenotype Ontology code,String,,,,
-mondo_label,MONDO disease ontology label,String,,,,
-mondo_code,MONDO disease ontology code,String,,,,
-maxo_label,Maximum Action Ontology label,String,,,,
-maxo_code,Maximum Action Ontology code,String,,,,
-other_label,Other ontology label,String,,,,
-other_code,Other ontology code,String,,,,
-measure_value,Value of the measured observation,String,,,,
-measure_unit,Unit of the measured observation,String,,,,
+variable_name,variable_description,data_type,enumerated_values,units,min,max,src_variable_name
+ftd_key,Unique key for the FTD record,String,,,,,ftd_key
+down_syndrome_status,Down syndrome status of the participant,String,,,,,down_syndrome_status
+age_at_first_patient_engagement,Age in days at first engagement,Integer,,,,,age_at_first_engagement
+first_patient_engagement_event,Type of first engagement event,String,,,,,first_engagement_event
+outcomes_vital_status,Vital status of the participant (e.g. Alive Deceased),String,,,,,vital_status
+age_at_last_vital_status,Age in days at last recorded vital status,Integer,,,,,age_last_vital_status
+study_code,Unique identifier for the study,String,,,,,study_code
+participant_global_id,Unique global identifier for the participant,String,,,,,participant_global_id
+participant_external_id,Study-specific participant identifier,String,,,,,participant_external_id
+event_id,Unique identifier for the event,Integer,,,,,event_id
+event_type,Type of event (e.g.Visit Diagnosis),String,,,,,event_type
+condition_or_measure_source_text,Original text describing condition or measure,String,,,,,condition_source_text
+age_at_condition_or_measure_observation,Age in days when the observation was recorded,Integer,,,,,age_at_condition
+condition_interpretation,How the condition was observed or assessed,String,,,,,condition_interpretation
+condition_status,Status of the condition (e.g. History Of Active),String,,,,,condition_status
+condition_data_source,Source of the condition data (e.g. Self-Reported),String,,,,,condition_data_source
+hpo_label,Human Phenotype Ontology label,String,,,,,hpo_label
+hpo_code,Human Phenotype Ontology code,String,,,,,hpo_code
+mondo_label,MONDO disease ontology label,String,,,,,mondo_label
+mondo_code,MONDO disease ontology code,String,,,,,mondo_code
+maxo_label,Maximum Action Ontology label,String,,,,,maxo_label
+maxo_code,Maximum Action Ontology code,String,,,,,maxo_code
+other_label,Other ontology label,String,,,,,other_label
+other_code,Other ontology code,String,,,,,other_code
+measure_value,Value of the measured observation,String,,,,,measure_value
+measure_unit,Unit of the measured observation,String,,,,,measure_unit

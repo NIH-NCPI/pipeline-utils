@@ -12,5 +12,3 @@ type_mapping = {
     "boolean": "BOOLEAN",
     "datetime": "TIMESTAMP"
 }
-
-FTD_CONFIG = 'data/ftd_data_dictionaries/ftd_study.yaml'

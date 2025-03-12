@@ -2,13 +2,13 @@ study_id: ftd
 
 data_dictionary:
   participant:
-    table_details: data/ftd_data_dictionaries/ftd_participant_dd.csv
+    table_details: ftd_participant_dd.csv
   condition:
-    table_details: data/ftd_data_dictionaries/ftd_condition_dd.csv
+    table_details: ftd_condition_dd.csv
   event:
-    table_details: data/ftd_data_dictionaries/ftd_event_dd.csv
+    table_details: ftd_event_dd.csv
   measurement:
-    table_details: data/ftd_data_dictionaries/ftd_measurement_dd.csv
+    table_details: ftd_measurement_dd.csv
 
 data_files:
   participant:
