@@ -1,8 +1,8 @@
 import os
 import yaml
 import pandas as pd
-import dbt_utils
-from dbt_utils.scripts.helpers import common
+import dbt_pipeline_utils
+from dbt_pipeline_utils.scripts.helpers import common
 from pathlib import Path
 
 
@@ -55,8 +55,8 @@ def write_file(filepath, data):
 
 def get_paths(study_id):
 
-    # dbt_utils paths
-    utils_root_dir = Path(dbt_utils.__file__).resolve().parent
+    # dbt_pipeline_utils paths
+    utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
     utils_ftd_study_data_dir = utils_root_dir / Path("data/ftd_data_dictionaries")
     utils_ftd_study_yml_path =  utils_ftd_study_data_dir / 'ftd_study.yaml'
 
@@ -72,7 +72,6 @@ def get_paths(study_id):
     dbtp_ftdc_models_dir = dbtp_root_dir / dbtp_ftdc_dir / Path("models")
     dbtp_ftdc_study_dir =  dbtp_ftdc_models_dir / study_id
     dbtp_ftdc_study_docs_dir = dbtp_ftdc_study_dir / Path("docs")
-
 
     dbtp_tgt_a_dir = dbtp_root_dir / Path("catalog/tgt_consensus_a")
     tgt_docs_dir = dbtp_tgt_a_dir / Path("docs")

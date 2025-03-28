@@ -1,7 +1,7 @@
 import yaml
 import os
 import json
-from dbt_utils.scripts.helpers.general import *
+from dbt_pipeline_utils.scripts.helpers.general import *
 
 def generate_run_command(operation, model, args=None):
     """Generates a dbt run command for models or macros with optional arguments."""

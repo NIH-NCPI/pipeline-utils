@@ -19,15 +19,15 @@ source utils_venv/bin/activate # On Windows: venv\Scripts\activate
 deactivate
 ```
 Install the package
-If working on a new feature it is possible to install a package version within the remote or local branch NOTE If testing changes to dbt_utils in the dbt project don't forget to deploy a dbt project branch with the correct dbt_utils version in the requirements.txt file! NOTE Any new env variables created, e.g. api keys, will need to be added to the dbt project deployment files.
+If working on a new feature it is possible to install a package version within the remote or local branch NOTE If testing changes to dbt_pipeline_utils in the dbt project don't forget to deploy a dbt project branch with the correct dbt_pipeline_utils version in the requirements.txt file! NOTE Any new env variables created, e.g. api keys, will need to be added to the dbt project deployment files.
 # remote
-pip install git+https://github.com/NIH-NCPI/dbt_utils.git@{branch_name}
+pip install git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git@{branch_name}
 
 # local
 pip install -e .
 
 # Locutus should install using the following command.
-pip install git+https://github.com/NIH-NCPI/dbt_utils.git
+pip install git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git
 
 # A re-install might be required while testing any changes to this repo, use this command to force the reinstall and ensure the latest version.
-pip install --force-reinstall --no-cache-dir git+https://github.com/NIH-NCPI/dbt_utils.git
+pip install --force-reinstall --no-cache-dir git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git

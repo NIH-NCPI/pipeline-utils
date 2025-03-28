@@ -1,6 +1,6 @@
 import pandas as pd
-from dbt_utils.scripts.helpers.general import *
-from dbt_utils.scripts.helpers.common import type_mapping
+from dbt_pipeline_utils.scripts.helpers.general import *
+from dbt_pipeline_utils.scripts.helpers.common import type_mapping
 from pathlib import Path
 
 

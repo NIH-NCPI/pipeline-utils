@@ -8,10 +8,15 @@ from jinja2 import Template
 import pdb
 import json
 
-from dbt_utils.scripts.helpers.generate_model_docs import generate_model_docs, generate_ftd_model_docs
-from dbt_utils.scripts.helpers.generate_model_run_script import generate_dbt_run_script
-from dbt_utils.scripts.helpers.general import *
-from dbt_utils.scripts.helpers.common import *
+from dbt_pipeline_utils.scripts.helpers.generate_model_docs import (
+    generate_model_docs,
+    generate_ftd_model_docs,
+)
+from dbt_pipeline_utils.scripts.helpers.generate_model_run_script import (
+    generate_dbt_run_script,
+)
+from dbt_pipeline_utils.scripts.helpers.general import *
+from dbt_pipeline_utils.scripts.helpers.common import *
 
 
 def validate_study_config(study_config, study_yml_path):

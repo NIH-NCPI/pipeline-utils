@@ -1,8 +1,8 @@
 import pandas as pd
 import re
-from dbt_utils.scripts.helpers.general import *
-from dbt_utils.scripts.helpers.common import type_mapping
-from dbt_utils.scripts.helpers.ftd_doc_generation import *
+from dbt_pipeline_utils.scripts.helpers.general import *
+from dbt_pipeline_utils.scripts.helpers.common import type_mapping
+from dbt_pipeline_utils.scripts.helpers.ftd_doc_generation import *
 from pathlib import Path
 
 

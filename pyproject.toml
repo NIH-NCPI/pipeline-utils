@@ -10,7 +10,7 @@ name = "dbt_pipeline_utils"
 authors = [
     {name = "Brenda Gutman", email="brenda.gutman@vumc.org"}
 ]
-description = "Unified API Interface for ontology search APIs."
+description = ""
 readme = "README.md"
 requires-python = ">3.10"
 classifiers = [
