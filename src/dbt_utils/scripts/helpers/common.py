@@ -1,5 +1,5 @@
- # Move these to env vars or a common file
-RAW_SCHEMA = "dbo_raw_data"
+# Move these to env vars or a common file
+SRC_SCHEMA = "dbo_src_data"
 DB_HOST = "localhost"
 DB_USER = "gutmanb"
 DB_NAME = "default_db"

@@ -29,7 +29,7 @@ def read_file(filepath):
     else:
         raise ValueError(f"Unsupported file type: {file_ext}")
 
-    
+
 def write_file(filepath, data):
     """Creates a directory for the table and writes a YAML, SQL, BASH, or Markdown file based on the extension."""
     
@@ -70,7 +70,6 @@ def get_paths(study_id):
 
     dbtp_ftdc_dir = dbtp_root_dir / Path("catalog/ftd_consensus")
     dbtp_ftdc_models_dir = dbtp_root_dir / dbtp_ftdc_dir / Path("models")
-    # dbtp_ftdc_model_docs_dir = dbtp_ftdc_models_dir / Path("docs")
     dbtp_ftdc_study_dir =  dbtp_ftdc_models_dir / study_id
     dbtp_ftdc_study_docs_dir = dbtp_ftdc_study_dir / Path("docs")
 
@@ -102,7 +101,6 @@ def get_paths(study_id):
         "dbtp_ftdc_dir": dbtp_ftdc_dir,
         "dbtp_ftdc_models_dir": dbtp_ftdc_models_dir,
         "dbtp_ftdc_study_dir": dbtp_ftdc_study_dir,
-        # "dbtp_ftdc_model_docs_dir": dbtp_ftdc_model_docs_dir,
         "dbtp_ftdc_study_docs_dir":dbtp_ftdc_study_docs_dir,
         "dbtp_tgt_a_dir": dbtp_tgt_a_dir,
         "tgt_docs_dir": tgt_docs_dir,
@@ -122,7 +120,7 @@ def validate_paths(paths_dict):
         if not path.exists():
             print(f"Warning: {key} does not exist - {path}")
     print('SUCCESS: End dir path validation')
-        
+
 
 def create_model_table_abs_path(study_id, base_dir, table):
     paths = get_paths(study_id)
@@ -149,7 +147,8 @@ def extract_columns(df):
         for _, row in df.iterrows()
     ]
 
-def load_src_column_data(data_dictionary, src_study_path, study_id, raw_only=None):
+
+def load_src_column_data(data_dictionary, src_study_path, study_id, src_only=None):
     """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
     column_data = {}
 
@@ -157,12 +156,12 @@ def load_src_column_data(data_dictionary, src_study_path, study_id, raw_only=Non
 
         ddict = table_info.get("table_details")
         ddict_full_path = src_study_path / ddict
-        raw_df = read_file(ddict_full_path)
+        src_df = read_file(ddict_full_path)
 
-        raw_table_key = f"{study_id}_raw_{table_id}"
-        column_data[raw_table_key] = extract_columns(raw_df)
+        src_table_key = f"{study_id}_src_{table_id}"
+        column_data[src_table_key] = extract_columns(src_df)
 
-        if not raw_only:
+        if not src_only:
 
             stg_ddict = table_info.get("stg_table_details")
             stg_ddict_full_path = src_study_path / stg_ddict
@@ -172,6 +171,7 @@ def load_src_column_data(data_dictionary, src_study_path, study_id, raw_only=Non
             column_data[stg_table_key] = extract_columns(stg_df)
 
     return column_data
+
 
 def load_ftd_column_data(data_dictionary, src_study_path, ftd_dd, ftd_study_path, study_id):
     """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""

@@ -6,25 +6,21 @@ from dbt_utils.scripts.helpers.ftd_doc_generation import *
 from pathlib import Path
 
 
-
 def generate_dbt_models_yml(
     data_dictionary, column_data, output_dir, study_id, ftd_model=None
 ):
-    """Generates dbt models.yml file for each table in its respective directory, including raw and staging models."""
+    """Generates dbt models.yml file for each table in its respective directory, including src and staging models."""
 
     ftd_models = []
 
     for table_id, table_info in data_dictionary.items():
-        raw_models = []
+        src_models = []
         if ftd_model:
             table_models_dir = output_dir 
             id_tables = [f"{study_id}_ftd_{table_id}"]
         else:
             table_models_dir = output_dir / Path(f"{table_id}")
-            id_tables = [
-                f"{study_id}_raw_{table_id}",
-                f"{study_id}_stg_{table_id}"
-            ]
+            id_tables = [f"{study_id}_src_{table_id}", f"{study_id}_stg_{table_id}"]
 
         for table_name in id_tables:
 
@@ -48,13 +44,10 @@ def generate_dbt_models_yml(
             if ftd_model:
                 ftd_models.append(model_entry)
             else:
-                raw_models.append(model_entry)
+                src_models.append(model_entry)
 
         if not ftd_model:
-            models = {
-                "version": 2,
-                "models": raw_models
-            }
+            models = {"version": 2, "models": src_models}
             filepath = table_models_dir / "__models.yml"
             write_file(filepath, models)
 
@@ -88,11 +81,8 @@ def generate_column_descriptions(data_dictionary, column_data, output_dir, study
             # Only process the FTD table key
             table_keys = [f"{study_id}_ftd_{table_id}"]
         else:
-            # Process both raw and stg table keys in a single loop
-            table_keys = [
-                f"{study_id}_raw_{table_id}",
-                f"{study_id}_stg_{table_id}"
-            ]
+            # Process both src and stg table keys in a single loop
+            table_keys = [f"{study_id}_src_{table_id}", f"{study_id}_stg_{table_id}"]
 
         for table_key in table_keys:
             print(f'printing table: {table_id} - key: {table_key}')
@@ -128,7 +118,7 @@ def generate_model_descriptions(data_dictionary, output_dir, study_id):
     """Generates model_descriptions.md using the specified format."""
     model_descriptions = []
 
-    # Group tables by prefix (e.g., "moo_raw_", "moo_stg_")
+    # Group tables by prefix (e.g., "moo_src_", "moo_stg_")
     grouped_tables = {}
     for table_id, table_info in data_dictionary.items():
         prefix = table_id.split("_")[0]  # Assumes prefix is the first part of table_id
@@ -138,9 +128,13 @@ def generate_model_descriptions(data_dictionary, output_dir, study_id):
         model_descriptions.append(f"### {prefix.capitalize()} Models\n")
 
         for table_id, table_info in tables:
-            raw_table_id = f"{study_id}_raw_{table_id}"
-            raw_description = table_info.get("description", f"Model for {raw_table_id}.")
-            model_descriptions.append(f"{{% docs {raw_table_id} %}}\n{raw_description}\n{{% enddocs %}}\n")
+            src_table_id = f"{study_id}_src_{table_id}"
+            src_description = table_info.get(
+                "description", f"Model for {src_table_id}."
+            )
+            model_descriptions.append(
+                f"{{% docs {src_table_id} %}}\n{src_description}\n{{% enddocs %}}\n"
+            )
 
             stg_table_id = f"{study_id}_stg_{table_id}"
             stg_description = table_info.get("description", f"Model for {stg_table_id}.")
@@ -152,16 +146,17 @@ def generate_model_descriptions(data_dictionary, output_dir, study_id):
 
             write_file(filepath, data)
 
-def generate_raw_sql_files(data_dictionary, output_dir, db_name, study_id):
+
+def generate_src_sql_files(data_dictionary, output_dir, db_name, study_id):
     """Generates SQL files dynamically for each table in its respective directory."""
 
     for table_id in data_dictionary.keys():
-        raw_table_id = f"{study_id}_raw_{table_id}"
+        src_table_id = f"{study_id}_src_{table_id}"
         sql_content = f"""{{{{ config(materialized='table') }}}}
 
-SELECT * FROM {db_name}.{study_id}_raw_data.{table_id}
+SELECT * FROM {db_name}.{study_id}_src_data.{table_id}
 """
-        filepath = output_dir / Path(table_id) / f"{raw_table_id}.sql"
+        filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
         write_file(filepath, sql_content)
 
@@ -172,7 +167,7 @@ def generate_stg_sql_files(
     """Generates staging SQL files dynamically for each table based on the data dictionary."""
 
     for table_id, table_info in data_dictionary.items():
-        src_table = f"{study_id}_raw_{table_id}"
+        src_table = f"{study_id}_src_{table_id}"
         new_table = f"{study_id}_stg_{table_id}"
         filepath = output_dir / Path(table_id) / f"{new_table}.sql"
 
@@ -202,17 +197,19 @@ def generate_stg_dds(
     data_dictionary, src_dd_path, study_id
 ):
     """Generates staging SQL files dynamically for each table based on the data dictionary.
-    open the raw dd and apply minimal transformations"""
+    open the src dd and apply minimal transformations"""
 
     for table_id, table_info in data_dictionary.items():
-        src_table = f"{study_id}_raw_{table_id}"
+        src_table = f"{study_id}_src_{table_id}"
         filepath = src_dd_path / f"{table_id}_stg_dd.csv"
 
         ddict = table_info.get("table_details")
         ddict_full_path = src_dd_path / ddict
         stg_df = read_file(ddict_full_path)
 
-        column_data = load_src_column_data(data_dictionary, src_dd_path, study_id, raw_only=True)
+        column_data = load_src_column_data(
+            data_dictionary, src_dd_path, study_id, src_only=True
+        )
 
         column_mapping = {
             col_name: column_name_code
@@ -237,11 +234,11 @@ def generate_dbt_project_yaml(data_dictionary, study_id, output_dir):
     study_info = {}
 
     for table_id in data_dictionary.keys():
-        raw_table_id = f"{study_id}_raw_{table_id}"
+        src_table_id = f"{study_id}_src_{table_id}"
         stg_table_id = f"{study_id}_stg_{table_id}"
 
         study_info[table_id] = {
-            raw_table_id: {
+            src_table_id: {
                 "+schema": f"{study_id}_data",
                 "+materialized": "table",
             },
@@ -296,7 +293,7 @@ def generate_model_docs(study_config, paths, db_name, type_mapping):
     generate_model_descriptions(
         data_dictionary, paths["dbtp_src_study_model_docs_dir"], study_id
     )
-    generate_raw_sql_files(
+    generate_src_sql_files(
         data_dictionary, paths["dbtp_src_study_model_dir"], db_name, study_id
     )
     generate_stg_sql_files(
@@ -347,4 +344,3 @@ def generate_ftd_model_docs(study_config, src_study_dir_path, ftd_study_dir_path
         study_id,
         ftd_model=True,
     )
-

@@ -178,7 +178,7 @@ def main(study_id):
     validate_study_config(study_config, paths["dbtp_study_data_dir"])
     print("End validation of study config")
 
-    schema = f"{study_config['study_id']}_raw_data"
+    schema = f"{study_config['study_id']}_src_data"
 
     for table_id, table_info in study_config["data_dictionary"].items():
         dd_path = table_info["table_details"]

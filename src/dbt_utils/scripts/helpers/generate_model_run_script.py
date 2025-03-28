@@ -30,7 +30,6 @@ def generate_run_command(operation, model, args=None):
     return op
 
 
-
 def generate_run_command(operation, model, args=None):
     """Generates a dbt run command for models or macros with optional arguments."""
     
@@ -50,7 +49,7 @@ def generate_run_command(operation, model, args=None):
 def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
     """Generates a dbt run Bash script dynamically based on a YAML configuration."""
     study_id = study_config.get("study_id", "study")
-    
+
     commands_list = [
     "#!/bin/bash",
     "set -e  # Exit on error",
@@ -59,13 +58,13 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
 ]
 
     # for table_id, table_info in study_config["data_dictionary"].items():
-    #     raw_table_id = f"{study_id}_raw_{table_id}"
+    #     src_table_id = f"{study_id}_src_{table_id}"
     #     stg_table_id = f"{study_id}_stg_{table_id}"
 
-    #     commands_list.append(generate_run_command("model", raw_table_id)) 
-    #     commands_list.append(generate_run_command("model", stg_table_id)) 
+    #     commands_list.append(generate_run_command("model", src_table_id))
+    #     commands_list.append(generate_run_command("model", stg_table_id))
 
-    # commands_list.append("# Run FTD tables") 
+    # commands_list.append("# Run FTD tables")
 
     # for table_id, table_info in ftd_config["data_dictionary"].items():
     #     commands_list.append(generate_run_command("model", f"{study_id}_ftd_{table_id}"))
@@ -85,10 +84,10 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
     commands_list.append("# Run sanity checks") 
 
     schemas = [
-        {"schema_name": "dbo_raw_data"},
+        {"schema_name": "dbo_src_data"},
         {"schema_name": f"dbo_{study_id}_data"},
         {"schema_name": f"dbo_{study_id}_ftd_data"},
-        {"schema_name": f"dbo_{study_id}_tgt_data"}
+        {"schema_name": f"dbo_{study_id}_tgt_data"},
     ]
 
     for schema in schemas:  

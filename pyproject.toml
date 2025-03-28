@@ -3,10 +3,10 @@ requires = ["setuptools"] #, "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 #[tool.setuptools_scm]
-#version_file = "dbt_utils/_version.py"
+#version_file = "dbt_pipeline_utils/_version.py"
 
 [project]
-name = "dbt_utils"
+name = "dbt_pipeline_utils"
 authors = [
     {name = "Brenda Gutman", email="brenda.gutman@vumc.org"}
 ]
