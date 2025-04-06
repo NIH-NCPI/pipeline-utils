@@ -9,7 +9,9 @@ from pathlib import Path
 def generate_dbt_models_yml(
     data_dictionary, column_data, output_dir, study_id, ftd_model=None
 ):
-    """Generates dbt models.yml file for each table in its respective directory, including src and staging models."""
+    """
+    Generates dbt models.yml file for each table in its respective directory, including src and staging models.
+    """
 
     ftd_models = []
 
@@ -147,14 +149,14 @@ def generate_model_descriptions(data_dictionary, output_dir, study_id):
             write_file(filepath, data)
 
 
-def generate_src_sql_files(data_dictionary, output_dir, db_name, study_id):
+def generate_src_sql_files(data_dictionary, output_dir, study_id):
     """Generates SQL files dynamically for each table in its respective directory."""
 
     for table_id in data_dictionary.keys():
         src_table_id = f"{study_id}_src_{table_id}"
         sql_content = f"""{{{{ config(materialized='table') }}}}
 
-SELECT * FROM {db_name}.{study_id}_src_data.{table_id}
+SELECT * FROM {study_id}_src_data.{table_id}
 """
         filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
@@ -193,6 +195,7 @@ FROM source
         # Write SQL file to the correct directory
         write_file(filepath, sql_content)
 
+
 def generate_stg_dds(
     data_dictionary, src_dd_path, study_id
 ):
@@ -203,8 +206,10 @@ def generate_stg_dds(
         src_table = f"{study_id}_src_{table_id}"
         filepath = src_dd_path / f"{table_id}_stg_dd.csv"
 
-        ddict = table_info.get("table_details")
-        ddict_full_path = src_dd_path / ddict
+        logger.info(f"Processing table: {table_id}")
+
+        ddict_full_path, ddict = get_src_ddict_path(src_dd_path, table_info)
+
         stg_df = read_file(ddict_full_path)
 
         column_data = load_src_column_data(
@@ -216,11 +221,27 @@ def generate_stg_dds(
             for col_name, column_name_code, _, _, _ in column_data.get(src_table, [])
         }
 
-        stg_df["src_variable_name"] = stg_df["variable_name"]
+        format_type = table_info.get("format")
 
-        stg_df["variable_name"] = stg_df["variable_name"].map(column_mapping)
+         # Map from the original format to pipeline_format
+        original_format_map = DD_FORMATS.get(format_type, {})
+        pipeline_format_map = DD_FORMATS["pipeline_format"]
 
-        t_path = src_dd_path / f"ftd_transformations/{table_id}_stg_additions_dd.csv"
+        # Convert src_variable_name based on the original format
+        stg_df[pipeline_format_map["src_variable_name"]] = stg_df.get(original_format_map["variable_name"], "")
+
+        # Convert variable_name field to match pipeline_format
+        variable_name_key = original_format_map.get("variable_name", "variable_name")
+        if variable_name_key in stg_df.columns:
+            stg_df[pipeline_format_map["variable_name"]] = (
+                stg_df[variable_name_key].map(column_mapping).fillna(stg_df[variable_name_key])
+            )
+
+        # Rename all columns according to pipeline_format
+        rename_map = {original_format_map[key]: pipeline_format_map[key] for key in pipeline_format_map if key in original_format_map}
+        stg_df.rename(columns=rename_map, inplace=True)
+
+        t_path = src_dd_path / Path(f"ftd_transformations/{table_id}_stg_additions_dd.csv")
         if t_path.exists():  
             transformations = read_file(t_path)
             stg_df = pd.concat([stg_df, transformations], ignore_index=True)
@@ -230,7 +251,7 @@ def generate_stg_dds(
         write_file(filepath, stg_df)
 
 
-def generate_dbt_project_yaml(data_dictionary, study_id, output_dir):
+def generate_dbt_project_yaml(data_dictionary, project_id, study_id, output_dir):
     study_info = {}
 
     for table_id in data_dictionary.keys():
@@ -252,7 +273,7 @@ def generate_dbt_project_yaml(data_dictionary, study_id, output_dir):
     dbt_config = {
         "name": study_id,
         "version": "1.0.0",
-        "profile": "pgtest",
+        "profile": project_id,
         "model-paths": ["models"],
         "macro-paths": ["macros"],
         "snapshot-paths": ["snapshots"],
@@ -269,19 +290,21 @@ def generate_dbt_project_yaml(data_dictionary, study_id, output_dir):
     write_file(filepath, dbt_config)
 
 
-def generate_model_docs(study_config, paths, db_name, type_mapping):
+def generate_model_docs(study_config, paths):
     """Main function to generate dbt model files, loading column data once."""
 
     data_dictionary = study_config.get("data_dictionary", {})
-
     study_id = study_config.get("study_id", "study")
+    project_id = study_config.get("project_id", "placeholder_project")
 
-    generate_dbt_project_yaml(data_dictionary, study_id, paths["dbtp_src_study_dir"])
+    generate_dbt_project_yaml(
+        data_dictionary, project_id, study_id, paths["dbtp_src_study_dir"]
+    )
 
-    generate_stg_dds(data_dictionary, paths["dbtp_study_data_dir"], study_id)
+    generate_stg_dds(data_dictionary, paths["src_data_dir"], study_id)
 
     column_data = load_src_column_data(
-        data_dictionary, paths["dbtp_study_data_dir"], study_id
+        data_dictionary, paths["src_data_dir"], study_id
     )
 
     generate_dbt_models_yml(
@@ -294,24 +317,25 @@ def generate_model_docs(study_config, paths, db_name, type_mapping):
         data_dictionary, paths["dbtp_src_study_model_docs_dir"], study_id
     )
     generate_src_sql_files(
-        data_dictionary, paths["dbtp_src_study_model_dir"], db_name, study_id
+        data_dictionary, paths["dbtp_src_study_model_dir"], study_id
     )
     generate_stg_sql_files(
         data_dictionary,
         column_data,
         paths["dbtp_src_study_model_dir"],
         study_id,
-        type_mapping,
+        type_mapping
     )
 
-def generate_ftd_model_docs(study_config, src_study_dir_path, ftd_study_dir_path, ftd_yml_path, dbtp_ftdc_dir,dbtp_ftdc_study_docs_dir, ftd_model_study_dir, utils_ftd_study_dir_path, utils_ftd_yml, ftd_study_yml_path):
+def generate_ftd_model_docs(study_config, src_study_dir_path, ftd_study_dir_path, ftd_yml_path, dbtp_ftdc_dir,dbtp_ftdc_study_docs_dir, ftd_model_study_dir, utils_ftd_study_dir_path, utils_ftd_yml, ftd_study_yml_path, trans_study_data_dir):
     """Main function to generate dbt model files, loading column data once."""
-    
+
     study_id = study_config.get("study_id", "study")
+    project_id = study_config.get("project_id", "placeholder_project")
 
     generate_ftd_dds(utils_ftd_study_dir_path,
                     utils_ftd_yml,
-                    src_study_dir_path,
+                    trans_study_data_dir,
                     ftd_study_dir_path,
                     ftd_yml_path,
                     study_id,
@@ -336,7 +360,7 @@ def generate_ftd_model_docs(study_config, src_study_dir_path, ftd_study_dir_path
     generate_ftd_sql_files(
         data_dictionary, ftd_dd, column_data, ftd_model_study_dir, study_id, type_mapping
     )
-    generate_ftd_dbt_project_yaml(ftd_dd, study_id, dbtp_ftdc_dir)
+    generate_ftd_dbt_project_yaml(ftd_dd, project_id, study_id, dbtp_ftdc_dir)
     generate_column_descriptions(
         ftd_dd,
         column_data,
