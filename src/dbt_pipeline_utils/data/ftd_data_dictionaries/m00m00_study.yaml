@@ -1,4 +1,4 @@
-study_id: ftd
+study_id: m00m00
 
 data_dictionary:
   participant:
@@ -12,10 +12,4 @@ data_dictionary:
 
 data_files:
   participant:
-    filename: 
-  condition:
-    filename: 
-  event:
-    filename: 
-  measurement:
-    filename: 
+    identifier: 

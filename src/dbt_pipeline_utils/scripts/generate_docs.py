@@ -60,9 +60,9 @@ def main(study_id, project_id, src_data_path):
         processor = file_setup(study_info, table_info, paths)
         src_dd_objs.append(processor)
 
-    print(f"Start validation of {study_id} config")
+    logger.info(f"Start validation of {study_id} config")
     validate_study_config(study_config, paths["src_data_dir"])
-    print("End validation of study config")
+    logger.info("End validation of study config")
 
     for table_id, data_info in study_config["data_files"].items():
 
@@ -78,8 +78,13 @@ def main(study_id, project_id, src_data_path):
                             paths["utils_ftd_study_data_dir"],
                             paths["utils_ftd_study_yml_path"],
                             paths["ftd_study_yml_path"],
-                            paths["trans_study_data_dir"]
+                            paths["trans_study_data_dir"],
+
                             )
+    project_catalog_path = paths["dbtp_p_dir"] / "catalog"
+
+    generate_basic_dbt_project_yml(project_catalog_path, "catalog")
+
     # copy over the tgt model
     copy_directory(paths["utils_ftd_tgta"], paths["dbtp_tgt_a_dir"])
 
@@ -87,7 +92,11 @@ def main(study_id, project_id, src_data_path):
 
     generate_dbt_run_script(study_config, ftd_config, scripts_dir=paths["dbtp_scripts_dir"])
 
-    print(f"END SCRIPT")
+
+    logger.info(f"END SCRIPT")
+    logger.warning("REMINDER: Update the profile in the copied tgt_consensus dbt_project.yml.")
+    logger.warning("REMINDER: Update the root dir packages.yml with the correct project import paths.")
+
 
 
 if __name__ == "__main__":

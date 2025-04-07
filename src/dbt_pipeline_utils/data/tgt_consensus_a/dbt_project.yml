@@ -1,6 +1,6 @@
 name: 'tgt'
 version: '1.0.0'
-profile: 'pgtest'
+profile: 'm00m00'
 
 model-paths: ["models"]
 macro-paths: ["macros"]
@@ -11,7 +11,7 @@ clean-targets:
 
 vars:
   target_schema: "fallback_schema"
-  source_table: "m00m00_raw_condition"
+  source_table: "m00m00_src_condition"
 
 models:
   tgt:

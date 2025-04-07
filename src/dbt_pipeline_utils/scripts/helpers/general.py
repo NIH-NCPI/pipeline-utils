@@ -228,22 +228,24 @@ def load_ftd_column_data(data_dictionary, src_dd_path, ftd_dd, ftd_study_path, s
 
     return column_data
 
+def generate_basic_dbt_project_yml(filepath, name):
 
-def extract_table_schema(paths, src_data_csv, identifier, format):
-    """Extracts column definitions from the data dictionary CSV."""
+    # Correct structure for dbt_project.yml
+    dbt_config = {
+        "name": name,
+        "version": "1.0.0",
+        "profile": "postgres",
+        "model-paths": ["models"],
+        "macro-paths": ["macros"],
+        "snapshot-paths": ["snapshots"],
+        "clean-targets": ["target", "dbt_packages"],
+    }
 
-    full_file_path = paths['src_data_dir']  / Path(f'{src_data_csv}')
-    dd = read_file(full_file_path)
-    logger.info(f"{identifier}")
-    # Use extract_columns to get structured column data
-    column_data_list = extract_columns(dd, format)
+    filepath = filepath / "dbt_project.yml"
 
-    column_definitions = []
-    for variable_name, formatted_name, _, data_type, _ in column_data_list:
-        sql_type = type_mapping.get(data_type, "TEXT")
-        column_definitions.append(f'"{formatted_name}" {sql_type}')
+    write_file(filepath, dbt_config)
 
-    return column_definitions, src_data_csv
+
 
 def get_src_ddict_path(src_dd_path, table_info):
         if table_info.get("source") == 'synapse':

@@ -13,12 +13,6 @@ def main(study_id, src_data_path):
 
     # Set paths
     paths = get_paths(study_id, src_data_path)
-    # If project dirs don't exist create them.
-    for var, path in paths.items():
-        if var.endswith("dir"):
-            path.mkdir(parents=True, exist_ok=True)
-            logger.debug(f"Path {path} exists")
-    validate_paths(paths)
 
     study_config = read_file(paths["study_yml_path"])
 
@@ -32,19 +26,23 @@ def main(study_id, src_data_path):
     for table_name, table_info in study_config["data_dictionary"].items():
         # generate hard copies of syn dd's prior to study_config validation
 
-        study_info.update({"table_name": table_name})
+        dd_study_info = study_info.copy()
+        dd_study_info.update({"table_name": table_name})
 
         logger.debug(f"Processing data_dictionaries: {table_name}")
 
-        processor = file_setup(study_info, table_info, paths)
+        processor = file_setup(dd_study_info, table_info, paths)
         src_dd_objs.append(processor)
 
     src_df_objs = []
     for table_name, table_info in study_config["data_files"].items():
         # generate hard copies of syn dd's prior to study_config validation
 
+        df_study_info = study_info.copy()
+        df_study_info.update({"table_name": table_name})
+
         logger.debug(f"Processing data_dictionaries: {table_name}")
-        processor = file_setup(study_info, table_info, paths)
+        processor = file_setup(df_study_info, table_info, paths)
         src_df_objs.append(processor)
 
     print(f"Start validation of {study_id} config")
@@ -57,7 +55,6 @@ def main(study_id, src_data_path):
 
         logger.info(f"Start pipeline db, src table creation {src_table_id}")
         dd.generate_new_table(column_definitions)
-        dd.import_data()
 
     for dfile in src_df_objs:
 

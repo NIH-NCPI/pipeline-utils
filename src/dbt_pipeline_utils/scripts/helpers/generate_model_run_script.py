@@ -56,18 +56,6 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
     'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
 ]
 
-    # for table_id, table_info in study_config["data_dictionary"].items():
-    #     src_table_id = f"{study_id}_src_{table_id}"
-    #     stg_table_id = f"{study_id}_stg_{table_id}"
-
-    #     commands_list.append(generate_run_command("model", src_table_id))
-    #     commands_list.append(generate_run_command("model", stg_table_id))
-
-    # commands_list.append("# Run FTD tables")
-
-    # for table_id, table_info in ftd_config["data_dictionary"].items():
-    #     commands_list.append(generate_run_command("model", f"{study_id}_ftd_{table_id}"))
-
     commands_list.append("# Run Target tables") 
 
     tgt_tables = {
@@ -91,6 +79,9 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
 
     for schema in schemas:  
         commands_list.append(generate_run_command("macro", "print_database_stats", schema))
+        
+    commands_list.append("# Running dbt clean. Ignore the compilation error.'")
+    commands_list.append("dbt clean")
 
     # Final script content
     data = "\n".join(commands_list) + "\n"

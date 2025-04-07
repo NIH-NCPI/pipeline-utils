@@ -10,7 +10,7 @@ from dbt_pipeline_utils.scripts.helpers.doc_generation import DocGeneration
 
 class DatabaseBC(ABC):
     """Base class to define common methods for file processing."""
-    
+
     def __init__(self, study_details, file_details, paths):
         self.study_details = study_details
         self.file_details = file_details
@@ -34,7 +34,6 @@ class DatabaseBC(ABC):
         for key, value in pipeline_db_vars.items():
             setattr(self, key, value)
 
-
     def get_db_vars(self):
         """Loads specific key-value pairs from a YAML file based on the profile type."""
         profile_keys = ["host", "user", "dbname"] # update if not, pipeline_db: postgres
@@ -45,7 +44,6 @@ class DatabaseBC(ABC):
         env_vars = {key: env_section.get(key) for key in profile_keys}
 
         return env_vars
-
 
     def generate_new_table(self, column_defs):
         """
@@ -69,9 +67,8 @@ class DatabaseBC(ABC):
                                                         table_name=self.new_db_table_id,
                                                         schema=self.src_schema)
 
-
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [
                     "dbt",
                     "run-operation",
@@ -83,16 +80,23 @@ class DatabaseBC(ABC):
                 ],
                 check=True,
             )
-            logger.info(f"Attempted to execute SQL:\n{sql_query}")
+            if result.stderr and "ERROR" in result.stderr:
+                logger.error("❌ PostgreSQL COPY failed with error:\n%s", result.stderr.strip())
+            else:
+                logger.info("✅ Executed SQL successfully:\n%s", sql_query.strip())
+                if result.stdout:
+                    logger.info("stdout:\n%s", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error executing DBT operation: {e}")
+            logger.error("❌ Subprocess failed with return code %s", e.returncode)
+            if e.stderr:
+                logger.error("stderr:\n%s", e.stderr.strip())
+            if e.stdout:
+                logger.info("stdout:\n%s", e.stdout.strip())
+
         except Exception as ex:
-            logger.error(f"An unexpected error occurred: {ex}")
-
-        # TODO Add an actual success after verification check and message.
-        logger.info(f"{self.dbname}.{self.src_schema}.{self.new_db_table_id} might have been created.")
-
+            logger.exception("❌ Unexpected error during import:")
+        
 
     def import_data(self):
 
@@ -104,20 +108,28 @@ class DatabaseBC(ABC):
         """
 
         try:
-            subprocess.run(
+            result = subprocess.run(
                 ["psql", "-h", self.host, "-U", self.user, "-d", self.dbname],
                 input=sql_query,
                 text=True,
                 check=True,
             )
-            print(f"Executed SQL:\n{sql_query}")
+            if result.stderr and "ERROR" in result.stderr:
+                logger.error("❌ PostgreSQL COPY failed with error:\n%s", result.stderr.strip())
+            else:
+                logger.info("✅ Executed SQL successfully:\n%s", sql_query.strip())
+                if result.stdout:
+                    logger.info("stdout:\n%s", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
-            print(f"Error executing DBT operation: {e}")
+            logger.error("❌ Subprocess failed with return code %s", e.returncode)
+            if e.stderr:
+                logger.error("stderr:\n%s", e.stderr.strip())
+            if e.stdout:
+                logger.info("stdout:\n%s", e.stdout.strip())
+
         except Exception as ex:
-            print(f"An unexpected error occurred: {ex}")
-
-
+            logger.exception("❌ Unexpected error during import:")
 
     def extract_table_schema(self):
         """Extracts column definitions from the data dictionary CSV."""
@@ -131,6 +143,6 @@ class DatabaseBC(ABC):
         column_definitions = []
         for variable_name, formatted_name, _, data_type, _ in column_data_list:
             sql_type = type_mapping.get(data_type, "TEXT")
-            column_definitions.append(f'"{formatted_name}" {sql_type}')
+            column_definitions.append(f'"{variable_name}" {sql_type}')
 
         return column_definitions, self.src_data_csv
