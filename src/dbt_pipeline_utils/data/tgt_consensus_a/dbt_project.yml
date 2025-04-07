@@ -1,0 +1,22 @@
+name: 'tgt'
+version: '1.0.0'
+profile: 'pgtest'
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+clean-targets: 
+  - "target"
+  - "dbt_packages"
+
+vars:
+  target_schema: "fallback_schema"
+  source_table: "m00m00_raw_condition"
+
+models:
+  tgt:
+    +materialized: table
+    tgt_participant:
+    tgt_measurement:
+    tgt_condition:
+    tgt_event:

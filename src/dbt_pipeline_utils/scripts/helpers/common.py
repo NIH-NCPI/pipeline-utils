@@ -1,9 +1,3 @@
-# Move these to env vars or a common file
-SRC_SCHEMA = "dbo_src_data"
-DB_HOST = "localhost"
-DB_USER = "gutmanb"
-DB_NAME = "default_db"
-
 # Map common data types to PostgreSQL types
 type_mapping = {
     "string": "TEXT",
@@ -11,4 +5,23 @@ type_mapping = {
     "float": "FLOAT",
     "boolean": "BOOLEAN",
     "datetime": "TIMESTAMP"
+}
+
+# Define mappings for different dictionary formats.
+DD_FORMATS = {
+    "src_type1": {
+        "variable_name": "Variable Name",
+        "formatted_variable_name": "Variable Name",
+        "description": "Description",
+        "data_type": None,  # Not available in type1
+        "src_variable_name": "src_variable_name",  # Generated, for stg dds
+    },
+    # Generated/intermediate pipeline dds, will follow the same format (pipeline_format)
+    "pipeline_format": {
+        "variable_name": "variable_name",
+        "formatted_variable_name": "variable_name",
+        "description": "variable_description",
+        "data_type": "data_type",
+        "src_variable_name": "src_variable_name",
+    },
 }

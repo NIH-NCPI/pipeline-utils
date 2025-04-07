@@ -1,7 +1,6 @@
-import yaml
-import os
 import json
 from dbt_pipeline_utils.scripts.helpers.general import *
+import subprocess
 
 def generate_run_command(operation, model, args=None):
     """Generates a dbt run command for models or macros with optional arguments."""
@@ -99,3 +98,6 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
 
     # Write the script to a file
     write_file(filepath, data)
+
+    # Edit script permissions
+    subprocess.run(["chmod", "+x", filepath], check=True)

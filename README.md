@@ -31,3 +31,23 @@ pip install git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git
 
 # A re-install might be required while testing any changes to this repo, use this command to force the reinstall and ensure the latest version.
 pip install --force-reinstall --no-cache-dir git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git
+
+
+# Developers
+To add a new src_dd_format --> scripts/helpers/general.py
+ - always update the readme options
+To add a new src_dd_src or filename_src --> scripts/process_study.py main
+ - always update the readme options
+Large datafiles
+ - data can also be retrieved via the Synapse API. Many possibilities to 
+ improve on synapse data handling. Forcing it through the csv route for now.
+
+Pipeline db is assumed to be postgres. Edits required to the data processors 
+ with a change.
+ Data from synapse might not refresh/download if it sees that the data
+ file already exists. If this is a problem check the synapse docs.
+
+To change db 
+ - pipeline db changes
+ - src db changes
+ - target db changes
