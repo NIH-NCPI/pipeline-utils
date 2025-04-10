@@ -1,0 +1,24 @@
+variable_name,description,data_type,enumerations,min,max
+participant_global_id,"Unique INCLUDE global identifier for the participant, assigned by DCC",string,,,
+participant_external_id,"Unique, de-identified identifier for the participant, assigned by data contributor. External IDs must be two steps removed from personal information in the study records.",string,,,
+age_at_biospecimen_collection,Age in days of participant at time of biospecimen collection,integer,,,
+sample_global_id,"INCLUDE global identifier for sample, assigned by DCC",string,,,
+sample_external_id,"Unique identifier for sample, assigned by data contributor. A sample is a unique biological material; two samples with two different IDs are biologically distinct.",string,,,
+sample_type,"Type of biological material comprising the Sample (e.g. Plasma, White blood cells, Red blood cells, DNA, RNA, Peripheral blood mononuclear cells, CD4+ Tconv cells, NK cells, Monocytes, CD8+ T cells, B cells, Granulocytes, Treg cells)",string,ATACseq;B cells Cryo;Blood Smear Slide;Buffy Coat;CD4+ Tconv cells;CD8+ T cells;CYTOF Ready White Blood Cells;DNA;Granulocytes;Monocytes;NK cells;PAXgene Whole Blood DNA;PAXgene Whole Blood DNA Tube;PAXgene Whole Blood RNA;PAXgene Whole Blood RNA Tube;PBMC;Peripheral Blood Mononuclear Cells;Peripheral Whole Blood;Plasma;Red Blood Cells;RNA;Saliva;Salivette;Skin Tape;Tongue Swab;Tregs;White Blood Cells;White Blood Cells Cryo;White Blood Cells DNA;White Blood Cells Protein;White Blood Cells RNA;Whole Blood;Whole Blood EDTA,,
+sample_availability,"Whether or not the sample is potentially available for sharing through the Virtual Biorepository",string,Available;Unavailable,,
+collection_global_id,"INCLUDE global identifier for the eldest sample in a lineage, assigned by DCC",string,,,
+collection_external_id,"Identifier for the eldest sample in a lineage of processed pooled or aliquoted samples - typically the material actually collected from the Participant. This may be the same as Parent Sample ID or Sample ID (if no processing was performed). Assigned by data contributor.",string,,,
+collection_sample_type,"Type of biological material comprising the Collected Sample (e.g. Whole blood, Not reported, Saliva, Derived cell line)",string,Saliva;Skin Tape;Tongue Swab;Whole Blood,,
+container_global_id,"INCLUDE global identifier for specific container/aliquot of sample, assigned by DCC",string,,,
+container_external_id,"Identifier for specific container/aliquot of sample, assigned by data contributor. For example, distinct aliquots of a sample will have the same Sample ID but different Container IDs.",integer,,1001035,434697326
+container_availability,Container Availability,string,Available;Unavailable,,
+parent_sample_global_id,"INCLUDE global identifier for the direct parent from which Sample was derived, assigned by DCC",string,,,
+parent_sample_external_id,"Unique identifier for the parent sample, assigned by data contributor",string,,,
+parent_sample_type,"Type of biological material comprising the Parent Sample (e.g. Peripheral Whole Blood, Derived Cell Line, Saliva, Whole blood, WBCs)",string,Monocytes;NA;PAXgene Whole Blood DNA Tube;PAXgene Whole Blood RNA Tube;Saliva;White Blood Cells;Whole Blood;Whole Blood EDTA,,
+laboratory_procedure,"Procedure by which Sample was derived from Parent Sample (e.g. Centrifugation, RBC lysis, Lyse/fix buffer, FACS, PAXgene DNA, PAXgene RNA, Qiagen Allprep, Ficoll)",string,NA;ATACseq;Blood draw;Blood Smear;Centrifugation;Cryopreservation;CyTOF WBC prep;FACS;FICOLL gradient;NA;PAXgene Blood DNA Tube;PAXgene Blood RNA Tube;Qiagen AllPrep;Qiagen PAXgene Blood DNA Kit;Qiagen PAXgene Blood RNA Kit;RBC lysis;Saliva bolus;Salivette;Skin Tape;Tongue Swab
+in_out,Sample Availability where In indicates available and Out indicates Unavailable,string,NA;In;Out,,
+biospecimen_storage,"Method by which Container is stored (e.g. Minus 80 degrees Celsius, Liquid nitrogen storage)",string,-80C Freezer;Liquid Nitrogen Storage;Other,,
+concentration,Concentration of sample in container,number,,,
+concentration_unit,Unit of sample concentration,string,Cells/mL;NA,,
+volume,Amount of sample in container,numeric,,0.01,1.2
+volume_unit,Unit of sample volume,string,each;mL;NA;uL,,  

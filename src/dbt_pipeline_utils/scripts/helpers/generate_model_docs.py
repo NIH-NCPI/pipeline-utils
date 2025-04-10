@@ -332,16 +332,13 @@ def generate_ftd_model_docs(study_config, src_study_dir_path, ftd_study_dir_path
 
     study_id = study_config.get("study_id", "study")
     project_id = study_config.get("project_id", "placeholder_project")
+    data_dictionary = study_config.get("data_dictionary", {})
 
     generate_ftd_dds(utils_ftd_study_dir_path,
-                    utils_ftd_yml,
                     trans_study_data_dir,
                     ftd_study_dir_path,
-                    ftd_yml_path,
-                    study_id,
-                    study_config)
+                    ftd_yml_path)
 
-    data_dictionary = study_config.get("data_dictionary", {})
     ftd_config = read_file(ftd_study_yml_path)
 
     ftd_dd = ftd_config.get("data_dictionary", {})

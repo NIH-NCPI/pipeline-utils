@@ -1,0 +1,29 @@
+study_id: m00m00
+
+data_dictionary:
+  additive:
+    identifier: ftd_additive_dd.csv
+  condition:
+    identifier: ftd_condition_dd.csv
+  contacts:
+    identifier: ftd_contacts_dd.csv
+  datafile:
+    identifier: ftd_datafile_dd.csv
+  dataset_manifest:
+    identifier: ftd_dataset_manifest_dd.csv
+  dataset_meta:
+    identifier: ftd_dataset_meta_dd.csv
+  encounter:
+    identifier: ftd_encounter_dd.csv
+  family:
+    identifier: ftd_family_dd.csv
+  participant:
+    identifier: ftd_participant_dd.csv
+  specimen:
+    identifier: ftd_specimen_dd.csv
+  study:
+    identifier: ftd_study_dd.csv
+
+data_files:
+  participant:
+    identifier: 

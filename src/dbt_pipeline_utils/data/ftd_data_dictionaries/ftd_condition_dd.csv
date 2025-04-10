@@ -1,27 +1,21 @@
-variable_name,variable_description,data_type,enumerated_values,units,min,max,src_variable_name
-ftd_key,Unique key for the FTD record,String,,,,,ftd_key
-down_syndrome_status,Down syndrome status of the participant,String,,,,,down_syndrome_status
-age_at_first_patient_engagement,Age in days at first engagement,Integer,,,,,age_at_first_engagement
-first_patient_engagement_event,Type of first engagement event,String,,,,,first_engagement_event
-outcomes_vital_status,Vital status of the participant (e.g. Alive Deceased),String,,,,,vital_status
-age_at_last_vital_status,Age in days at last recorded vital status,Integer,,,,,age_last_vital_status
-study_code,Unique identifier for the study,String,,,,,study_code
-participant_global_id,Unique global identifier for the participant,String,,,,,participant_global_id
-participant_external_id,Study-specific participant identifier,String,,,,,participant_external_id
-event_id,Unique identifier for the event,Integer,,,,,event_id
-event_type,Type of event (e.g.Visit Diagnosis),String,,,,,event_type
-condition_or_measure_source_text,Original text describing condition or measure,String,,,,,condition_source_text
-age_at_condition_or_measure_observation,Age in days when the observation was recorded,Integer,,,,,age_at_condition
-condition_interpretation,How the condition was observed or assessed,String,,,,,condition_interpretation
-condition_status,Status of the condition (e.g. History Of Active),String,,,,,condition_status
-condition_data_source,Source of the condition data (e.g. Self-Reported),String,,,,,condition_data_source
-hpo_label,Human Phenotype Ontology label,String,,,,,hpo_label
-hpo_code,Human Phenotype Ontology code,String,,,,,hpo_code
-mondo_label,MONDO disease ontology label,String,,,,,mondo_label
-mondo_code,MONDO disease ontology code,String,,,,,mondo_code
-maxo_label,Maximum Action Ontology label,String,,,,,maxo_label
-maxo_code,Maximum Action Ontology code,String,,,,,maxo_code
-other_label,Other ontology label,String,,,,,other_label
-other_code,Other ontology code,String,,,,,other_code
-measure_value,Value of the measured observation,String,,,,,measure_value
-measure_unit,Unit of the measured observation,String,,,,,measure_unit
+variable_name,description,data_type,enumerations
+study_code,"Unique identifier for the study, assigned by DCC",enumeration,HTP
+participant_global_id,"Unique INCLUDE global identifier for the participant, assigned by DCC",string,
+participant_external_id,"Unique, de-identified identifier for the participant, assigned by data contributor. External IDs must be two steps removed from personal information in the study records.",string,
+event_id,"Identifier for event (Visit, Survey completion, Sample collection, etc.) to which the Condition data are linked, if applicable. There may be multiple events linked to a Participant.",string,
+event_type,"Type of event for which Event ID is given (Visit, Survey completion, Sample collection, etc.)",string,Survey;Visit
+condition_or_measure_source_text,"Co-occurring Condition (phenotype or diagnosis) or Measure (observation with numeric value), as described by data contributor. The Down Syndrome Genetic Diagnosis will be rolled into this field.",string,
+age_at_condition_or_measure_observation,"Age in days at which Condition or Measure was observed, recorded, or diagnosed",integer,
+condition_interpretation,Whether Condition was observed or not,enumeration,Observed;Not Observed
+condition_status,"Whether the Condition is ongoing, has been resolved, or this is a general history of the condition without known dates",enumeration,Current;Resolved;History Of
+condition_data_source,Whether Condition information was obtained by the investigator or reported by participant/family member,enumeration,Clinical;Self-reported
+hpo_label,Label for Condition in the Human Phenotype Ontology (HPO),string,
+hpo_code,Code for Condition in the Human Phenotype Ontology (HPO),string,
+mondo_label,Label for Condition in the Mondo Disease Ontology (MONDO),string,
+mondo_code,Code for Condition in the Mondo Disease Ontology (Mondo),string,
+maxo_label,Label for Condition in the Medical Action Ontology (MAXO),string,
+maxo_code,Code for condition in the Medical Action Ontology (MAXO),string,
+other_label,"Label for Condition in another ontology (if no match in HPO, MONDO, or MAXO)",string,
+other_code,"Code for Condition in another ontology (if no match in HPO, MONDO, or MAXO)",string,
+measure_value,Numeric value of Measure,integer,
+measure_unit,"Unit that is associated with Measure Value (e.g. kg, cm, %, x10^9/L, etc.)",string,%;10^9 cells/L;cm;g/dL;kg;kg/m2;L of red blood cells/L of blood;NA;weeks

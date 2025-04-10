@@ -1,0 +1,3 @@
+variable_name,description,data_type,enumerations
+additive_id,Additive ID,String,
+description,Description,String,

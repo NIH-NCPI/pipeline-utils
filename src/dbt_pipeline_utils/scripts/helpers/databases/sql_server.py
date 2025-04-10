@@ -45,7 +45,11 @@ class SynapseFileProcessor(DatabaseBC):
 
         data = read_file(metadata_file_path)
 
-        output_dir = self.paths['src_data_dir'] / Path(self.src_data_csv)
+        output_path = self.paths['src_data_dir'] / Path(self.src_data_csv)
 
-        write_file(output_dir, data)
+        if output_path.is_file():
+            logger.info(f"File already exists, not overwriting data.")
+            return
+        
+        write_file(output_path, data)
     

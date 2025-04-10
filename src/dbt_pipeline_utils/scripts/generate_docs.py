@@ -83,7 +83,8 @@ def main(study_id, project_id, src_data_path):
                             )
     project_catalog_path = paths["dbtp_p_dir"] / "catalog"
 
-    generate_basic_dbt_project_yml(project_catalog_path, "catalog")
+        
+    generate_basic_dbt_project_yml(project_catalog_path, "catalog", study_config["pipeline_db"])
 
     # copy over the tgt model
     copy_directory(paths["utils_ftd_tgta"], paths["dbtp_tgt_a_dir"])

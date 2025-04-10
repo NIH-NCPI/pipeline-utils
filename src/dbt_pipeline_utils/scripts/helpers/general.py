@@ -10,8 +10,9 @@ from dbt_pipeline_utils import logger
 
 def read_file(filepath):
     if not os.path.exists(filepath):
-        raise FileNotFoundError(f"File does not exist: {filepath}")
-
+        logger.warning(f"File does not exist: {filepath}")
+        return
+    
     file_handlers = {
         ".yaml": lambda: yaml.safe_load(open(filepath, "r")),
         ".yml": lambda: yaml.safe_load(open(filepath, "r")),
@@ -40,6 +41,12 @@ def write_file(filepath, data):
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
     file_extension = filepath.suffix
+
+    # Stops the overwrite of existing sql files
+    if file_extension == ".sql":
+        if filepath.is_file():
+            logger.info(f"File: {filepath.name} exists. Delete the existing file, before generating a new one.")
+            return
 
     file_handlers = {
         ".yaml": lambda: yaml.dump(data, open(filepath, "w", encoding="utf-8"), default_flow_style=False, sort_keys=False, indent=2),
@@ -122,7 +129,7 @@ def get_paths(study_id, project_id, src_data_path=None):
     ftd_study_data_dir = src_data_dir / Path("ftd_data_dictionaries")
     trans_study_data_dir = src_data_dir / Path("ftd_transformations")
 
-    ftd_study_yml_path =  ftd_study_data_dir / 'ftd_study.yaml'
+    ftd_study_yml_path =  src_data_dir / 'ftd_study.yaml'
 
     return {
         "profiles_path": profiles_path,
@@ -228,13 +235,13 @@ def load_ftd_column_data(data_dictionary, src_dd_path, ftd_dd, ftd_study_path, s
 
     return column_data
 
-def generate_basic_dbt_project_yml(filepath, name):
+def generate_basic_dbt_project_yml(filepath, name, default_profile):
 
     # Correct structure for dbt_project.yml
     dbt_config = {
         "name": name,
         "version": "1.0.0",
-        "profile": "postgres",
+        "profile": default_profile,
         "model-paths": ["models"],
         "macro-paths": ["macros"],
         "snapshot-paths": ["snapshots"],

@@ -62,10 +62,9 @@ def generate_ftd_dbt_project_yaml(data_dictionary, project_id, study_id, output_
 
 
 def generate_ftd_sql_files(data_dictionary, ftd_dd, column_data, output_dir, study_id, type_mapping):
-    """Generates staging SQL files dynamically for each table based on the data dictionary."""
 
     src_table_columns = {
-        table_id: {col[0] for col in column_data.get(f"{study_id}_stg_{table_id}", [])}
+        table_id: {col[1] for col in column_data.get(f"{study_id}_stg_{table_id}", [])}
         for table_id in data_dictionary.keys()
     }
 
@@ -76,10 +75,9 @@ def generate_ftd_sql_files(data_dictionary, ftd_dd, column_data, output_dir, stu
         column_definitions = []
         joins = []
 
-        for col_name, column_name_code, _, col_data_type, src_var_name in column_data.get(new_table, []):
+        for col_name, _, _, col_data_type, src_var_name in column_data.get(new_table, []):
             sql_type = type_mapping.get(col_data_type, "TEXT")
-            # import pdb
-            # pdb.set_trace()
+
             alias = 'GEN_UNKNOWN'
             for src_id, cols in src_table_columns.items():
                 if src_var_name in cols:
@@ -111,10 +109,11 @@ FROM source
         write_file(filepath, sql_content)
 
 def generate_ftd_dds(
-   utils_ftd_study_dir_path, utils_ftd_yml, trans_study_data_dir, ftd_study_dir_path, ftd_yml_path, study_id, study_config
+   utils_ftd_study_dir_path, trans_study_data_dir, ftd_study_dir_path, ftd_yml_path
 ):
-    utils_ftd_yml = read_file(utils_ftd_yml)
-    utils_ftd_dd = utils_ftd_yml.get("data_dictionary", {})
+    
+    ftd_yml = read_file(ftd_yml_path)
+    utils_ftd_dd = ftd_yml.get("data_dictionary", {})
     additions_temp_path = utils_ftd_study_dir_path / "additions_template.csv"
 
     if additions_temp_path.exists:
@@ -135,5 +134,4 @@ def generate_ftd_dds(
         trans_path = trans_study_data_dir / f"{table_id}_stg_additions_dd.csv"
 
         write_file(filepath, utils_df)
-        write_file(ftd_yml_path, utils_ftd_yml)
         write_file(trans_path, temp)

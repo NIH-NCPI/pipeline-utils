@@ -5,6 +5,9 @@ Running the script locally or working on a branch?
 Create and activate a virtual environment (recommended):
 [Click here] for more on virtual environments.
 
+** NOTE: SOME projects recommend pyenv. 
+TODO: Give more info about pyenv
+
 ```
 # Step 1: cd into the directory to store the venv
 
@@ -21,33 +24,23 @@ deactivate
 Install the package
 If working on a new feature it is possible to install a package version within the remote or local branch NOTE If testing changes to dbt_pipeline_utils in the dbt project don't forget to deploy a dbt project branch with the correct dbt_pipeline_utils version in the requirements.txt file! NOTE Any new env variables created, e.g. api keys, will need to be added to the dbt project deployment files.
 # remote
-pip install git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git@{branch_name}
+pip install git+https://github.com/NIH-NCPI/pipeline_utils.git@{branch_name}
 
 # local
 pip install -e .
 
 # Locutus should install using the following command.
-pip install git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git
+pip install git+https://github.com/NIH-NCPI/pipeline_utils.git
 
 # A re-install might be required while testing any changes to this repo, use this command to force the reinstall and ensure the latest version.
-pip install --force-reinstall --no-cache-dir git+https://github.com/NIH-NCPI/dbt_pipeline_utils.git
+pip install --force-reinstall --no-cache-dir git+https://github.com/NIH-NCPI/pipeline_utils.git
 
 
 # Developers
-To add a new src_dd_format --> scripts/helpers/general.py
- - always update the readme options
-To add a new src_dd_src or filename_src --> scripts/process_study.py main
+To add a new src_dd_format --> scripts/helpers/common.py
  - always update the readme options
 Large datafiles
- - data can also be retrieved via the Synapse API. Many possibilities to 
- improve on synapse data handling. Forcing it through the csv route for now.
+ - data can also be retrieved via the Synapse API. Many possibilities to improve on synapse data handling. Forcing it through the csv route for now.
 
-Pipeline db is assumed to be postgres. Edits required to the data processors 
- with a change.
- Data from synapse might not refresh/download if it sees that the data
- file already exists. If this is a problem check the synapse docs.
-
-To change db 
- - pipeline db changes
- - src db changes
- - target db changes
+Pipeline db is assumed -hardcoded in some areas- to be postgres.
+ Data from synapse might not refresh/download if it sees that the data file already exists. If this is a problem check the synapse docs.

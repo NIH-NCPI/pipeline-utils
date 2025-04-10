@@ -76,9 +76,6 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
         {"schema_name": f"dbo_{study_id}_ftd_data"},
         {"schema_name": f"dbo_{study_id}_tgt_data"},
     ]
-
-    for schema in schemas:  
-        commands_list.append(generate_run_command("macro", "print_database_stats", schema))
         
     commands_list.append("# Running dbt clean. Ignore the compilation error.'")
     commands_list.append("dbt clean")

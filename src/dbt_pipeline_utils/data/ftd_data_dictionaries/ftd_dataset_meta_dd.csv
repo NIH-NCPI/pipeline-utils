@@ -1,0 +1,21 @@
+variable_name,description,data_type,enumerations,min,max
+study_code,Study Code,String,DS-COG-ALL;DS-PCGC;DS360-CHD;DSC;HTP;X01-deSmith;X01-Hakonarson,,
+dataset_name,Dataset Name,String,DS-COG-ALL Unharmonized Demographic/Clinical Data;DS-COG-ALL Whole Genome Sequencing;DS-Connect Unharmonized Demographic/Clinical Data;DS-PCGC Unharmonized Demographic/Clinical Data;DS-PCGC Whole Genome Sequencing;DS360-CHD Unharmonized Demographic/Clinical Data;DS360-CHD Whole Genome Sequencing ;HTP Plasma Inflammatory Markers (MSD v1);HTP Plasma Metabolomics (v1);HTP Unharmonized Demographic/Clinical Data;HTP Whole Blood RNAseq (v1);X01-deSmith Unharmonized Demographic/Clinical Data;X01-deSmith Whole Genome Sequencing;X01-Hakonarson RNASeq;X01-Hakonarson Unharmonized Demographic/Clinical Data;X01-Hakonarson Whole Genome Sequencing,,
+dataset_description,"",String,
+dataset_global_id,Dataset Global ID,String,,,
+dataset_external_id,Dataset External ID,String,; ,,
+expected_number_of_participants,Expected Number of Participants,Int,,1055,530
+expected_number_of_files,Expected Number of Files,String,,,
+data_collection_start_year,Data Collection Start Year,Int,,2013,2016
+data_collection_end_year,Data Collection End Year,String,,,
+data_category,Data Category,String,Genomics;Metabolomics;Proteomics;Transcriptomics;Unharmonized Demographic/Clinical Data,,
+data_type,Data Type,String,,,
+experimental_strategy,Experimental Strategy,String,;Bulk RNA-Seq;LCMS Metabolomics;Multiplex Immunoassay;Whole Genome Sequencing,,
+experimental_platform,Experimental Platform,String,Illumina;Illumina NovaSeq;Meso Scale Discovery;Ultra high-performance liquid chromatography-mass spectrometry (UHPLC-MS),,
+publication,Publication,String,,,
+access_limitations,Access Limitations,String,,,
+access_requirements,Access Requirements,String,,,
+dbgap,dbGaP,String,,,
+other_repository,Other Repository,String,,,
+other_access_authority,Other Access Authority,String,,,
+is_harmonized,Is Harmonized,Boolean,,, 
