@@ -1,10 +1,10 @@
 # Map common data types to PostgreSQL types
 type_mapping = {
-    "string": "TEXT",
-    "integer": "INTEGER",
-    "float": "FLOAT",
-    "boolean": "BOOLEAN",
-    "datetime": "TIMESTAMP"
+    "string": "text",
+    "integer": "integer",
+    "float": "float",
+    "boolean": "boolean",
+    "datetime": "timestamp"
 }
 
 # Define mappings for different dictionary formats.

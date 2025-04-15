@@ -68,18 +68,6 @@ def generate_dbt_run_script(study_config, ftd_config, scripts_dir):
     for table, args in tgt_tables.items():
         commands_list.append(generate_run_command("model", f"tgt_{table}", args))
 
-    commands_list.append("# Run sanity checks") 
-
-    schemas = [
-        {"schema_name": "dbo_src_data"},
-        {"schema_name": f"dbo_{study_id}_data"},
-        {"schema_name": f"dbo_{study_id}_ftd_data"},
-        {"schema_name": f"dbo_{study_id}_tgt_data"},
-    ]
-        
-    commands_list.append("# Running dbt clean. Ignore the compilation error.'")
-    commands_list.append("dbt clean")
-
     # Final script content
     data = "\n".join(commands_list) + "\n"
     filepath = scripts_dir / f"run_{study_id}.sh"

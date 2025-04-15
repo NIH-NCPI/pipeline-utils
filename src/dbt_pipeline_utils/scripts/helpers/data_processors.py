@@ -142,7 +142,7 @@ class DatabaseBC(ABC):
 
         column_definitions = []
         for variable_name, formatted_name, _, data_type, _ in column_data_list:
-            sql_type = type_mapping.get(data_type, "TEXT")
+            sql_type = type_mapping.get(data_type, "text")
             column_definitions.append(f'"{variable_name}" {sql_type}')
 
         return column_definitions, self.src_data_csv

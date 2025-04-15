@@ -76,7 +76,7 @@ def generate_ftd_sql_files(data_dictionary, ftd_dd, column_data, output_dir, stu
         joins = []
 
         for col_name, _, _, col_data_type, src_var_name in column_data.get(new_table, []):
-            sql_type = type_mapping.get(col_data_type, "TEXT")
+            sql_type = type_mapping.get(col_data_type, "text")
 
             alias = 'GEN_UNKNOWN'
             for src_id, cols in src_table_columns.items():
@@ -94,16 +94,16 @@ def generate_ftd_sql_files(data_dictionary, ftd_dd, column_data, output_dir, stu
         
         sql_content = f"""{{{{ config(materialized='table', schema='{study_id}_data') }}}}
 
-WITH source AS (
-    SELECT 
+with source as (
+    select 
        {",\n       ".join(column_definitions)}
-    FROM {{{{ ref('{study_id}_stg_{base_table}') }}}} AS {base_table}
+    from {{{{ ref('{study_id}_stg_{base_table}') }}}} AS {base_table}
     {' '.join(joins)}
 )
 
-SELECT 
+select 
     * 
-FROM source
+from source
 """
 
         write_file(filepath, sql_content)

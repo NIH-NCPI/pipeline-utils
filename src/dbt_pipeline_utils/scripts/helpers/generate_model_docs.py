@@ -156,7 +156,7 @@ def generate_src_sql_files(data_dictionary, output_dir, study_id):
         src_table_id = f"{study_id}_src_{table_id}"
         sql_content = f"""{{{{ config(materialized='table') }}}}
 
-SELECT * FROM {study_id}_src_data.{table_id}
+select * from {study_id}_src_data.{table_id}
 """
         filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
@@ -175,21 +175,21 @@ def generate_stg_sql_files(
 
         column_definitions = []
         for col_name, column_name_code, _, col_data_type, _ in column_data.get(src_table, []):
-            sql_type = type_mapping.get(col_data_type, "TEXT")
+            sql_type = type_mapping.get(col_data_type, "text")
             column_definitions.append(f'"{col_name}"::{sql_type} AS "{column_name_code}"')
 
         sql_content = f"""{{{{ config(materialized='table') }}}}
 
-WITH source AS (
-    SELECT 
+with source as (
+    select 
        {",\n       ".join(column_definitions)}
-    FROM {{{{ ref('{src_table}') }}}}
+    from {{{{ ref('{src_table}') }}}}
 )
 
-SELECT 
+select 
     *,
-    CONCAT(study_code, '-', participant_global_id) AS ftd_key
-FROM source
+    concat(study_code, '-', participant_global_id) AS ftd_key
+from source
 """
 
         # Write SQL file to the correct directory
