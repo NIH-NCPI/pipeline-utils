@@ -89,7 +89,7 @@ def generate_ftd_sql_files(data_dictionary, ftd_dd, column_data, output_dir, stu
         base_table = list(src_table_columns.keys())[0]
         for src_id in src_table_columns.keys():
             if src_id != base_table:
-                joins.append(f"JOIN {{{{ ref('{study_id}_stg_{src_id}') }}}} AS {src_id} USING (ftd_key)")
+                joins.append(f"join {{{{ ref('{study_id}_stg_{src_id}') }}}} AS {src_id} using (ftd_key)")
 
         
         sql_content = f"""{{{{ config(materialized='table', schema='{study_id}_data') }}}}
@@ -97,7 +97,7 @@ def generate_ftd_sql_files(data_dictionary, ftd_dd, column_data, output_dir, stu
 with source as (
     select 
        {",\n       ".join(column_definitions)}
-    from {{{{ ref('{study_id}_stg_{base_table}') }}}} AS {base_table}
+    from {{{{ ref('{study_id}_stg_{base_table}') }}}} as {base_table}
     {' '.join(joins)}
 )
 

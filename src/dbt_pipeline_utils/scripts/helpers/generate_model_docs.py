@@ -188,7 +188,7 @@ with source as (
 
 select 
     *,
-    concat(study_code, '-', participant_global_id) AS ftd_key
+    concat(study_code, '-', participant_global_id) as ftd_key
 from source
 """
 

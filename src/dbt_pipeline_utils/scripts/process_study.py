@@ -31,8 +31,10 @@ def main(study_id, src_data_path):
 
         logger.debug(f"Processing data_dictionaries: {table_name}")
 
-        processor = file_setup(dd_study_info, table_info, paths)
-        src_dd_objs.append(processor)
+        processor = file_setup(dd_study_info, table_info, paths, import_script=True)
+
+        if processor:
+            src_dd_objs.append(processor)
 
     src_df_objs = []
     for table_name, table_info in study_config["data_files"].items():
@@ -42,8 +44,10 @@ def main(study_id, src_data_path):
         df_study_info.update({"table_name": table_name})
 
         logger.debug(f"Processing data_dictionaries: {table_name}")
-        processor = file_setup(df_study_info, table_info, paths)
-        src_df_objs.append(processor)
+        processor = file_setup(df_study_info, table_info, paths, import_script=True)
+
+        if processor:
+            src_dd_objs.append(processor)
 
     print(f"Start validation of {study_id} config")
     validate_study_config(study_config, paths["src_data_dir"])

@@ -255,13 +255,16 @@ def generate_basic_dbt_project_yml(filepath, name, default_profile):
 
 
 def get_src_ddict_path(src_dd_path, table_info):
-        if table_info.get("source") == 'synapse':
+        if table_info.get("import_type") == 'synapse':
             ddict = table_info.get("src_file_id")
 
-        if table_info.get("source") == 'local_csv':
+        if table_info.get("import_type") == 'pg':
             ddict = table_info.get("identifier")
 
-        if table_info.get("source") not in ['local_csv', 'synapse']:
-            logger.error(f"{table_info.get("source")} is not valid")
+        if table_info.get("import_type") == 'duckdb':
+            ddict = table_info.get("identifier")
+
+        if table_info.get("import_type") not in ['pg', 'duckdb', 'synapse']:
+            logger.error(f"{table_info.get("import_type")} is not valid")
             
         return src_dd_path / Path(f"{ddict}"), ddict
