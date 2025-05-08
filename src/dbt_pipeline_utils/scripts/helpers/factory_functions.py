@@ -4,7 +4,7 @@ from dbt_pipeline_utils.scripts.helpers.databases.duckdb import DuckDBFileProces
 
 from dbt_pipeline_utils.scripts.helpers.general import *
 
-def file_setup(study_info, table_info, paths, import_script=False):
+def file_setup(study_info, table_info, paths):
     """file_type is not necessary when processing dds"""
 
     processor, import_type = get_data_processor(study_info, table_info, paths)
@@ -15,11 +15,11 @@ def file_setup(study_info, table_info, paths, import_script=False):
         processor.get_syn_file()
 
     # This is all duckdb needs, to import src data
-    is_dd = table_info['identifier'].endswith('_dd.csv')
+    # is_dd = table_info['identifier'].endswith('_dd.csv')
     if import_type == 'duckdb':
         # duckdb dds don't need to be imported. 
-        if processor and import_script and is_dd:
-            return
+        # if processor and import_script and is_dd:
+            # return
         processor.import_via_macro()
         return
 

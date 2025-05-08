@@ -62,6 +62,45 @@ def generate_dbt_models_yml(
         filepath = output_dir / "__models.yml"
         write_file(filepath, models)
 
+def generate_dbt_sources_yml(data_dictionary, column_data, output_dir, study_id):
+    source_tables = []
+
+    # TODO: Remove Hardcode.
+    for table_id, table_info in data_dictionary.items():
+        if table_info['import_type'] == 'duckdb':
+            schema_name = 'main'
+        if table_info['import_type'] != 'duckdb':
+            schema_name = f"{study_id}_src_data"
+
+        columns_metadata = [
+            {
+                "name": col_name,
+                "description": f'{{{{ doc("{table_id}_{col_name_code}") }}}}'
+            }
+            for col_name, col_name_code, _, _, _ in column_data.get(f"{table_id}", [])
+        ]
+
+        source_tables.append({
+            "name": table_id,
+            "description": table_info.get("description", f"Source table for {table_id}."),
+            "columns": columns_metadata
+        })
+
+    sources_yaml = {
+        "version": 2,
+        "sources": [
+            {
+                "name": study_id,
+                "schema": schema_name,
+                "tables": source_tables
+            }
+        ]
+    }
+
+    filepath = output_dir / "sources.yml"
+    write_file(filepath, sources_yaml)
+
+
 
 def generate_column_descriptions(data_dictionary, column_data, output_dir, study_id, ftd_model=None):
     """Generates a separate column_descriptions.md for each table in its respective docs directory."""
@@ -290,7 +329,7 @@ def generate_dbt_project_yaml(data_dictionary, project_id, study_id, output_dir)
     write_file(filepath, dbt_config)
 
 
-def generate_model_docs(study_config, paths):
+def generate_model_docs(study_config, paths, src_dd_objs, src_df_objs):
     """Main function to generate dbt model files, loading column data once."""
 
     data_dictionary = study_config.get("data_dictionary", {})
@@ -307,7 +346,10 @@ def generate_model_docs(study_config, paths):
         data_dictionary, paths["src_data_dir"], study_id
     )
 
-    generate_dbt_models_yml(
+    # generate_dbt_models_yml(
+    #     data_dictionary, column_data, paths["dbtp_src_study_model_dir"], study_id
+    # )
+    generate_dbt_sources_yml(
         data_dictionary, column_data, paths["dbtp_src_study_model_dir"], study_id
     )
     generate_column_descriptions(

@@ -253,7 +253,7 @@ def generate_basic_dbt_project_yml(filepath, name, default_profile):
     write_file(filepath, dbt_config)
 
 
-
+# TODO: Remove hardcode. Use processors eventually.
 def get_src_ddict_path(src_dd_path, table_info):
         if table_info.get("import_type") == 'synapse':
             ddict = table_info.get("src_file_id")
