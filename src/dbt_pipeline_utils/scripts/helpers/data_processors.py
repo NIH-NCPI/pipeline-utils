@@ -39,7 +39,8 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         for key, value in study_details.items():
             setattr(self, key, value)
 
-        self.new_db_table_id = f"{self.table_name}" # Should be the same as the src sql doc generated
+        self.new_table_name = Path(self.get_src_table_key(self.table_name)).stem
+
 
         # Make the profile_keys into attributes
         pipeline_db_vars = self.get_db_vars()
@@ -56,7 +57,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
 
     def get_db_vars(self):
         """Loads specific key-value pairs from a YAML file based on the profile type."""
-        profile_keys = ["host", "user", "dbname"] # update if not, pipeline_db: postgres
+        profile_keys = ["host", "user", "dbname", "schema"] # update if not, pipeline_db: postgres
 
         config = read_file(self.profiles_path)
         env_section = config.get(self.pipeline_db, {}).get("outputs", {}).get("dev", {})
@@ -77,16 +78,15 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         create_table_template = """
         CREATE SCHEMA IF NOT EXISTS {{schema}};
 
-        CREATE TABLE IF NOT EXISTS {{db_name}}.{{schema}}.{{table_name}} (
+        CREATE TABLE IF NOT EXISTS {{schema}}.{{table_name}} (
             {% for column in columns %}
             {{ column }}{% if not loop.last %},{% endif %}
             {% endfor %}
         );
         """
-
         sql_query = Template(create_table_template).render(db_name=self.dbname,
                                                         columns=column_defs,
-                                                        table_name=self.new_db_table_id,
+                                                        table_name=self.new_table_name,
                                                         schema=self.src_schema)
 
         try:
@@ -126,7 +126,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         csv_file = self.paths["src_data_dir"] / Path(f"{self.src_data_csv}")
 
         sql_query = f"""
-        \\COPY {self.src_schema}.{self.new_db_table_id} FROM '{csv_file}' DELIMITER ',' CSV HEADER;
+        \\COPY {self.src_schema}.{self.new_table_name} FROM '{csv_file}' DELIMITER ',' CSV HEADER;
         """
 
         try:
@@ -158,9 +158,8 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
 
         full_file_path = self.paths['src_data_dir']  / Path(f'{self.src_data_csv}')
         dd = read_file(full_file_path)
-        logger.info(f"{self.identifier}")
         # Use extract_columns to get structured column data
-        column_data_list = self.extract_columns(dd, self.format)
+        column_data_list = self.extract_columns(dd, self.table_info['format'])
 
         column_definitions = []
         for variable_name, formatted_name, _, data_type, _ in column_data_list:

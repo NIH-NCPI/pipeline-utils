@@ -58,14 +58,9 @@ class DocGeneration():
         study_info = {}
 
         for table_id in self.data_dictionary.keys():
-            src_table_id = f"{self.study_id}_src_{table_id}"
             stg_table_id = f"{self.study_id}_stg_{table_id}"
 
             study_info[table_id] = {
-                src_table_id: {
-                    "+schema": f"{self.study_id}_data",
-                    "+materialized": "table",
-                },
                 stg_table_id: {
                     "+schema": f"{self.study_id}_data",
                     "+materialized": "table",
