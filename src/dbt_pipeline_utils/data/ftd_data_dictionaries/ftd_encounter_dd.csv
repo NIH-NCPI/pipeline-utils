@@ -1,7 +1,0 @@
-variable_name,description,data_type,enumerations
-participant_external_id,"Unique, de-identified identifier for the participant, assigned by data contributor. External IDs must be two steps removed from personal information in the study records.",string,
-event_id,"Identifier for event (Visit, Survey completion, Sample collection, etc.) to which the Condition data are linked, if applicable. There may be multiple events linked to a Participant.",string,
-event_type,"Type of event for which Event ID is given (Visit, Survey completion, Sample collection, etc.)",string,Baseline visit;Biospecimen collection;Enrollment
-age_at_event,Participant's age at the time of the event,integer
-first_encounter,Indicates if this was the participant's first encounter,boolean
-last_known_encounter,Indicates if this was the participant's last encounter,boolean

@@ -1,2 +1,0 @@
-variable_name,variable_description,data_type,enumerated_values,units,min,max,src_variable_name
-ftd_key,Unique key for the FTD record,String,,,,,ftd_key

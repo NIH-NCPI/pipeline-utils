@@ -1,6 +1,0 @@
-variable_name,description,data_type,enumerations
-family_id,"Unique identifier for family to which Participant belongs, assigned by data contributor",string,
-family_type,Structure of family members participating in the study,enumeration,Control-only;Duo;Other;Proband-only;Trio;Trio+
-id1,"Identifier associated with the subject's id",string,
-id2,"Identifier associated with the focus (a proband)' id",string,
-relationship,Relationship of Participant to proband,enumeration,Proband;Father;Mother;Sibling;Other relative;Unrelated control

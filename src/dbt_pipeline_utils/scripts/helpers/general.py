@@ -33,60 +33,41 @@ def read_file(filepath):
     return data
 
 
-def write_file(filepath, data):
+def write_file(filename, data, overwrite=False):
     """Creates a directory for the table and writes a YAML, SQL, BASH, or Markdown file based on the extension."""
 
     # Ensure the directory exists
-    if not filepath.parent.exists():
-        filepath.parent.mkdir(parents=True, exist_ok=True)
+    if not filename.parent.exists():
+        filename.parent.mkdir(parents=True, exist_ok=True)
 
-    file_extension = filepath.suffix
+    file_extension = filename.suffix
 
     # Stops the overwrite of existing sql files
-    if file_extension == ".sql":
-        if filepath.is_file():
-            logger.info(f"File: {filepath.name} exists. Delete the existing file, before generating a new one.")
+    if not overwrite:
+        if filename.is_file():
+            parent_dirs = filename.parent.parent.parent.parent
+            logger.info(f"File: {filename.relative_to(parent_dirs)} exists. Delete the existing file, before generating a new one.")
             return
 
     file_handlers = {
-        ".yaml": lambda: yaml.dump(data, open(filepath, "w", encoding="utf-8"), default_flow_style=False, sort_keys=False, indent=2),
-        ".yml": lambda: yaml.dump(data, open(filepath, "w", encoding="utf-8"), default_flow_style=False, sort_keys=False, indent=2),
-        ".csv": lambda: data.to_csv(filepath, index=False),
-        ".sql": lambda: open(filepath, "w", encoding="utf-8").write(data),
-        ".md": lambda: open(filepath, "w", encoding="utf-8").write(data),
-        ".sh": lambda: open(filepath, "w", encoding="utf-8").write(data),
+        ".yaml": lambda: yaml.dump(data, open(filename, "w", encoding="utf-8"), default_flow_style=False, sort_keys=False, indent=2),
+        ".yml": lambda: yaml.dump(data, open(filename, "w", encoding="utf-8"), default_flow_style=False, sort_keys=False, indent=2),
+        ".csv": lambda: data.to_csv(filename, index=False),
+        ".sql": lambda: open(filename, "w", encoding="utf-8").write(data),
+        ".md": lambda: open(filename, "w", encoding="utf-8").write(data),
+        ".sh": lambda: open(filename, "w", encoding="utf-8").write(data),
     }
 
     if file_extension not in file_handlers:
         raise ValueError(f"Unsupported file type: {file_extension}")
     
-    logger.debug(f"Writing {file_extension} to file: {filepath}")
+    logger.debug(f"Writing {file_extension} to file: {filename}")
     file_handlers[file_extension]()
 
+    logger.info(f"Generated: {Path(filename).name}")
 
-    logger.info(f"Generated: {Path(filepath).name}")
 
-def extract_columns(dd, format):
-    """
-    Returns None where data is not available
-
-    """
-    column_map = DD_FORMATS[format]  # Define dd column expectations
-
-    column_data_list = [
-        (
-            row[column_map["variable_name"]],
-            row[column_map["formatted_variable_name"]].lower().replace(" ", "_"),
-            row.get(column_map["description"]),
-            row.get(column_map["data_type"]),
-            row.get(column_map["src_variable_name"]),
-        )
-        for _, row in dd.iterrows()
-    ]
-
-    return column_data_list
-
-def get_paths(study_id, project_id, src_data_path=None):
+def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
     """
     For automatic validation of dir path creation, end the dir variables with "dir"
     """
@@ -103,6 +84,7 @@ def get_paths(study_id, project_id, src_data_path=None):
     # dbt project paths
     dbtp_root_dir = Path.cwd()
     dbtp_p_dir = dbtp_root_dir / Path(f"{project_id}")
+    dbtp_catalog_dir = dbtp_p_dir / Path("catalog")
     dbtp_scripts_dir = dbtp_p_dir / Path("scripts")
     dbtp_sources_dir = dbtp_p_dir / Path("catalog/sources")
     dbtp_src_study_dir = dbtp_sources_dir / study_id
@@ -114,9 +96,9 @@ def get_paths(study_id, project_id, src_data_path=None):
     dbtp_ftdc_study_dir =  dbtp_ftdc_models_dir / study_id
     dbtp_ftdc_study_docs_dir = dbtp_ftdc_study_dir / Path("docs")
 
-    dbtp_tgt_a_dir = dbtp_p_dir / Path("catalog/tgt_consensus_a")
-    tgt_docs_dir = dbtp_tgt_a_dir / Path("docs")
-    tgt_models_dir = dbtp_tgt_a_dir / Path("models")
+    dbtp_tgt_dir = dbtp_p_dir / Path(f"catalog/{tgt_model_id}")
+    tgt_docs_dir = dbtp_tgt_dir / Path("docs")
+    tgt_models_dir = dbtp_tgt_dir / Path("models")
     tgt_models_docs_dir = tgt_models_dir / Path("docs")
 
     # src data filepaths
@@ -129,6 +111,11 @@ def get_paths(study_id, project_id, src_data_path=None):
     ftd_study_data_dir = src_data_dir / Path("ftd_data_dictionaries")
     trans_study_data_dir = src_data_dir / Path("ftd_transformations")
 
+    # static data paths
+    static_data_dir = dbtp_root_dir / Path(f"data/static")
+    ftd_static_data_dir = static_data_dir / Path("ftd_data_dictionaries")
+    tgt_static_data_dir = static_data_dir / Path(f"{tgt_model_id}")
+
     ftd_study_yml_path =  src_data_dir / 'ftd_study.yaml'
 
     return {
@@ -139,6 +126,7 @@ def get_paths(study_id, project_id, src_data_path=None):
         "utils_ftd_tgta": utils_ftd_tgta,
         "dbtp_root_dir": dbtp_root_dir,
         "dbtp_p_dir": dbtp_p_dir,
+        "dbtp_catalog_dir": dbtp_catalog_dir,
         "dbtp_scripts_dir": dbtp_scripts_dir,
         "dbtp_sources_dir": dbtp_sources_dir,
         "dbtp_src_study_dir": dbtp_src_study_dir,
@@ -148,7 +136,7 @@ def get_paths(study_id, project_id, src_data_path=None):
         "dbtp_ftdc_models_dir": dbtp_ftdc_models_dir,
         "dbtp_ftdc_study_dir": dbtp_ftdc_study_dir,
         "dbtp_ftdc_study_docs_dir":dbtp_ftdc_study_docs_dir,
-        "dbtp_tgt_a_dir": dbtp_tgt_a_dir,
+        "dbtp_tgt_dir": dbtp_tgt_dir,
         "tgt_docs_dir": tgt_docs_dir,
         "tgt_models_dir": tgt_models_dir,
         "tgt_models_docs_dir": tgt_models_docs_dir,
@@ -156,6 +144,8 @@ def get_paths(study_id, project_id, src_data_path=None):
         "study_yml_path": study_yml_path,
         "ftd_study_data_dir": ftd_study_data_dir,
         "trans_study_data_dir":trans_study_data_dir,
+        "ftd_static_data_dir":ftd_static_data_dir,
+        "tgt_static_data_dir":tgt_static_data_dir,
         "ftd_study_yml_path": ftd_study_yml_path
     }
 
@@ -181,59 +171,6 @@ def create_model_table_abs_path(study_id, base_dir, table):
     abs_table_path = table_path.resolve()
     return abs_table_path
 
-def load_src_column_data(data_dictionary, src_dd_path, study_id, src_only=None):
-    """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
-    column_data = {}
-
-    for table_id, table_info in data_dictionary.items():
-
-        ddict_full_path, ddict = get_src_ddict_path(src_dd_path, table_info)
-
-        dd_format = table_info.get("format")
-        src_df = read_file(ddict_full_path)
-
-        src_table_key = f"{study_id}_src_{table_id}"
-        column_data[src_table_key] = extract_columns(src_df, dd_format)
-
-        if not src_only:
-
-            stg_ddict = table_info.get("stg_src_table_id")
-            stg_ddict_full_path = src_dd_path / stg_ddict
-            stg_df = read_file(stg_ddict_full_path)
-
-            dd_format = table_info.get("format")
-
-            stg_table_key = f"{study_id}_stg_{table_id}"
-            column_data[stg_table_key] = extract_columns(stg_df, "pipeline_format")
-
-    return column_data
-
-
-def load_ftd_column_data(data_dictionary, src_dd_path, ftd_dd, ftd_study_path, study_id):
-    """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
-    column_data = {}
-
-    for table_id, table_info in data_dictionary.items():
-        stg_table_key = f"{study_id}_stg_{table_id}"
-
-        ddict = table_info.get("stg_src_table_id")
-        ddict_full_path = src_dd_path / ddict
-        df = read_file(ddict_full_path)
-        df = df.astype(str).fillna("FTD_UNKNOWN")
-
-        column_data[stg_table_key] = extract_columns(df, "pipeline_format")
-
-    for table_id, table_info in ftd_dd.items():
-        table_key = f"{study_id}_ftd_{table_id}"
-
-        ddict = table_info.get("identifier")
-        ddict_full_path = ftd_study_path / ddict
-        df = read_file(ddict_full_path)
-        df = df.astype(str).fillna("FTD_UNKNOWN")
-
-        column_data[table_key] = extract_columns(df, "pipeline_format")
-
-    return column_data
 
 def generate_basic_dbt_project_yml(filepath, name, default_profile):
 
@@ -253,18 +190,20 @@ def generate_basic_dbt_project_yml(filepath, name, default_profile):
     write_file(filepath, dbt_config)
 
 
-# TODO: Remove hardcode. Use processors eventually.
-def get_src_ddict_path(src_dd_path, table_info):
-        if table_info.get("import_type") == 'synapse':
-            ddict = table_info.get("src_file_id")
+def copy_directory(src_dir, dest_dir):
+    """
+    Recursively copies files and subdirectories from src_dir to dest_dir
+    """
 
-        if table_info.get("import_type") == 'pg':
-            ddict = table_info.get("identifier")
+    for item in src_dir.rglob("*"):
+        relative_path = item.relative_to(src_dir)
+        target = dest_dir / relative_path
 
-        if table_info.get("import_type") == 'duckdb':
-            ddict = table_info.get("identifier")
-
-        if table_info.get("import_type") not in ['pg', 'duckdb', 'synapse']:
-            logger.error(f"{table_info.get("import_type")} is not valid")
+        if item.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            # Copy file contents manually
+            data = read_file(item)
+            write_file(target, data)        
             
-        return src_dd_path / Path(f"{ddict}"), ddict
+            print(f"Copied '{src_dir}' to '{dest_dir}'")

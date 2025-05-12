@@ -4,12 +4,13 @@ from dbt_pipeline_utils.scripts.helpers.general import *
 import synapseclient
 
 class SynapseFileProcessor(DatabaseBC):
-    def __init__(self, study_details, file_details, paths):
-        super().__init__(study_details, file_details, paths)
+    def __init__(self, study_config, ftd_config, table_name, table_info, paths):
+        super().__init__(study_config, ftd_config, table_name, table_info, paths)
 
         self.profile = 'synapse'
         self.src_schema = f'{self.study_id}_src_data'
         self.src_data_csv =  self.src_file_id # Identifies the csv file containing data to be imported.
+        
 
     def login_to_synapse():
         # If not logged in, log in to synapse

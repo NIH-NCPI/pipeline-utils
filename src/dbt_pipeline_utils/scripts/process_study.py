@@ -1,11 +1,9 @@
 import argparse
-from jinja2 import Template
 
 from dbt_pipeline_utils.scripts.helpers.general import *
-from dbt_pipeline_utils.scripts.helpers.common import *
-from dbt_pipeline_utils.scripts.helpers.validation import *
+# from dbt_pipeline_utils.scripts.helpers.common import *
+from dbt_pipeline_utils.scripts.helpers.validate_study_config import *
 from dbt_pipeline_utils.scripts.helpers.factory_functions import *
-
 from dbt_pipeline_utils import logger
 
 
@@ -15,6 +13,7 @@ def main(study_id, src_data_path):
     paths = get_paths(study_id, src_data_path)
 
     study_config = read_file(paths["study_yml_path"])
+    ftd_config = read_file(paths["ftd_study_yml_path"])
 
     study_info = {
         "study_id": study_config["study_id"],
@@ -31,7 +30,7 @@ def main(study_id, src_data_path):
 
         logger.debug(f"Processing data_dictionaries: {table_name}")
 
-        processor = file_setup(dd_study_info, table_info, paths)
+        processor = file_setup(study_config, ftd_config, table_name, table_info, paths)
 
         if processor:
             src_dd_objs.append(processor)
@@ -44,7 +43,7 @@ def main(study_id, src_data_path):
         df_study_info.update({"table_name": table_name})
 
         logger.debug(f"Processing data_dictionaries: {table_name}")
-        processor = file_setup(df_study_info, table_info, paths)
+        processor = file_setup(study_config, ftd_config, table_name, table_info, paths)
 
         if processor:
             src_df_objs.append(processor)
@@ -55,10 +54,8 @@ def main(study_id, src_data_path):
 
     for dd in src_dd_objs:
 
-        column_definitions, src_table_id = dd.extract_table_schema()
-
-        logger.info(f"Start pipeline db, src table creation {src_table_id}")
-        dd.generate_new_table(column_definitions)
+        logger.info(f"Start pipeline db, src table creation")
+        dd.generate_new_table()
 
     for dfile in src_df_objs:
 

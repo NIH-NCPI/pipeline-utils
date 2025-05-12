@@ -5,15 +5,14 @@ import subprocess
 import json
 
 class DuckDBFileProcessor(DatabaseBC):
-    def __init__(self, study_details, file_details, paths):
-        super().__init__(study_details, file_details, paths)
+    def __init__(self, study_config, ftd_config, table_name, table_info, paths):
+        super().__init__(study_config, ftd_config, table_name, table_info, paths)
 
         self.profile = self.pipeline_db
-        self.src_schema = f'{self.study_id}_src_data'
-        self.src_data_csv = self.identifier # Identifies the csv file containing data to be imported.
+        self.src_schema = 'main'
+        self.src_data_csv = self.table_info['identifier'] # Identifies the csv file containing data to be imported.
 
-
-    def import_via_macro(self):
+    def import_data(self):
         """
         The dbt duckdb adapter has it's own functions to allow for csv import.
 
@@ -53,15 +52,45 @@ class DuckDBFileProcessor(DatabaseBC):
         except Exception as ex:
             logger.exception("❌ Unexpected error during Duckdb import:")
 
-def generate_src_sql_files(data_dictionary, output_dir, study_id):
-    """Generates SQL files dynamically for each table in its respective directory."""
+    def generate_new_table(self):
+        pass
 
-    for table_id in data_dictionary.keys():
-        src_table_id = f"{study_id}_src_{table_id}"
-        sql_content = f"""{{{{ config(materialized='table') }}}}
+    def generate_src_sql_files(self, output_dir):
+        '''
+        Duckdb src table is automatically recognized by dbt.
+        '''
+        pass
 
-select * from {study_id}_src_data.{table_id}
-"""
-        filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
-        write_file(filepath, sql_content)
+    def generate_dbt_project_yaml(self):
+        study_info = {}
+
+        for table_id in self.data_dictionary.keys():
+            stg_table_id = f"{self.study_id}_stg_{table_id}"
+
+            study_info[table_id] = {
+                stg_table_id: {
+                    "+schema": self.src_schema,
+                    "+materialized": "table",
+                },
+            }
+
+        # Correct structure for dbt_project.yml
+        dbt_config = {
+            "name": self.study_id,
+            "version": "1.0.0",
+            "profile": self.project_id,
+            "model-paths": ["models"],
+            "macro-paths": ["macros"],
+            "snapshot-paths": ["snapshots"],
+            "clean-targets": ["target", "dbt_packages"],
+            "models": {
+                "+schema": self.src_schema,
+                "+materialized": "table",
+                **study_info,
+            },
+        }
+
+        filepath = self.paths["dbtp_src_study_dir"] / "dbt_project.yml"
+
+        write_file(filepath, dbt_config)
