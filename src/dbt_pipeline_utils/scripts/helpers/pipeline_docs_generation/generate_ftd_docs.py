@@ -70,12 +70,12 @@ class FTDDocGenClass():
                         alias = src_id
                         break
 
-                column_definitions.append(f'{alias}.{src_var_name}::{sql_type} AS "{col_name}"')
+                column_definitions.append(f'{alias}.{src_var_name}::{sql_type} as "{col_name}"')
 
             base_table = list(src_table_columns.keys())[0]
             for src_id in src_table_columns.keys():
                 if src_id != base_table:
-                    joins.append(f"join {{{{ ref('{self.study_id}_stg_{src_id}') }}}} AS {src_id} using (ftd_key)")
+                    joins.append(f"join {{{{ ref('{self.study_id}_stg_{src_id}') }}}} as {src_id} using (ftd_key)")
 
             
             sql_content = f"""{{{{ config(materialized='table', schema='{self.study_id}_data') }}}}

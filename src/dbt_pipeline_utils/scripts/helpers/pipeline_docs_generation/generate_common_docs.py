@@ -297,7 +297,7 @@ class DocGeneration():
             column_definitions = []
             for col_name, column_name_code, _, col_data_type, _ in column_data.get(src_table, []):
                 sql_type = type_mapping.get(col_data_type, "text")
-                column_definitions.append(f'"{col_name}"::{sql_type} AS "{column_name_code}"')
+                column_definitions.append(f'"{col_name}"::{sql_type} as "{column_name_code}"')
 
             sql_content = f"""{{{{ config(materialized='table') }}}}
 
