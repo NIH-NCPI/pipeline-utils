@@ -62,4 +62,4 @@ def validate_study_config(study_config, study_yml_path):
 
     validate_dfs(data_files, study_yml_path, file_ids)
 
-    logger.info("Validation passed: Study configuration is valid.")
+    logger.debug("Validation passed: Study configuration is valid.")

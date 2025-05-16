@@ -13,6 +13,7 @@ from dbt_pipeline_utils import logger
 
 def main(study_id, project_id, tgt_id, src_data_path):
 
+    logger.info(f'Generating the {project_id} {study_id} dbt pipeline...')
     # Set paths
     paths = get_paths(study_id, project_id, tgt_id, src_data_path)
     # If project dirs don't exist create them. 
@@ -46,9 +47,9 @@ def main(study_id, project_id, tgt_id, src_data_path):
         if processor:
             src_df_objs.append(processor)
 
-    logger.info(f"Start validation of {study_id} config")
+    logger.debug(f"Start validation of {study_id} config")
     validate_study_config(study_config, paths["src_data_dir"])
-    logger.info("End validation of study config")
+    logger.debug("End validation of study config")
 
     for df_obj in src_df_objs:
 
@@ -62,10 +63,9 @@ def main(study_id, project_id, tgt_id, src_data_path):
 
         generate_run_script(df_obj)
 
-    logger.info(f"END SCRIPT")
-    logger.warning("REMINDER: Update the profile in the copied tgt_consensus dbt_project.yml.")
-    logger.warning("REMINDER: Update the root dir packages.yml with the correct project import paths.")
-
+    logger.info("REMINDER: Update {tgt_id} dbt_project.yml.")
+    logger.info("REMINDER: Check the imports rootdir/packages.yml.")
+    logger.info(f"Generation complete")
 
 
 if __name__ == "__main__":

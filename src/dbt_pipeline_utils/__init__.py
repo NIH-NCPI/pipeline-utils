@@ -16,4 +16,4 @@ logging.basicConfig(
 
 # Create a default logger for the package
 logger = logging.getLogger("dbt_pipeline_utils")
-logger.info("Logging is set up.")
+logger.debug("Logging is set up.")

@@ -19,4 +19,4 @@ class TgtDocGenClass():
                 data = read_file(item)
                 write_file(target, data)
 
-        print(f"Copied '{src_dir}' to '{dest_dir}'")
+        logger.debug(f"Copied '{src_dir}' to '{dest_dir}'")

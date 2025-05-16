@@ -17,13 +17,13 @@ class SynapseFileProcessor(DatabaseBC):
         try:
             syn = synapseclient.Synapse()
             syn.getUserProfile()
-            logger.info(f"Already logged in to Synapse.")
+            logger.debug(f"Already logged in to Synapse.")
         except synapseclient.SynapseHTTPError as e:
             if e.response.status_code == 403: 
-                logger.info(f"Not logged in. Logging in to Synapse.")
+                logger.debug(f"Not logged in. Logging in to Synapse.")
                 syn = synapseclient.Synapse()
                 syn = synapseclient.login()
-                logger.info(f"Logged in to Synapse.")
+                logger.debug(f"Logged in to Synapse.")
             else:
                 logger.error(f"Error checking Synapse login: {e}")
         return syn
@@ -36,10 +36,10 @@ class SynapseFileProcessor(DatabaseBC):
         path of the cached file to 'read it in'. Then, write the file to the dir it 
         is expected to be found by dbt_pipeline_utils functions. 
         """
-        print(f"Logging in to Synapse.")
+        logger.info(f"Logging in to Synapse.")
         syn = synapseclient.Synapse()
         syn = synapseclient.login()
-        print(f"Logged in")
+        logger.info(f"Logged in to synapse")
 
         file_info = syn.get(self.identifier) # synapse id
         metadata_file_path = file_info.path
@@ -49,7 +49,7 @@ class SynapseFileProcessor(DatabaseBC):
         output_path = self.paths['src_data_dir'] / Path(self.src_data_csv)
 
         if output_path.is_file():
-            logger.info(f"File already exists, not overwriting data.")
+            logger.debug(f"File already exists, not overwriting data.")
             return
         
         write_file(output_path, data)

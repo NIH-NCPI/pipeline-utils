@@ -73,7 +73,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         Default postgress pipeline db
         """
         column_defs, src_table_id = self.extract_table_schema()
-        logger.info(f"Start pipeline db, src table creation {src_table_id}")
+        logger.debug(f"Start pipeline db, src table creation {src_table_id}")
 
         create_table_template = """
         CREATE SCHEMA IF NOT EXISTS {{schema}};
@@ -107,7 +107,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
             else:
                 logger.info("✅ Executed SQL successfully:\n%s", sql_query.strip())
                 if result.stdout:
-                    logger.info("stdout:\n%s", result.stdout.strip())
+                    logger.warning("stdout:\n%s", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
             logger.error("❌ Subprocess failed with return code %s", e.returncode)
@@ -141,7 +141,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
             else:
                 logger.info("✅ Executed SQL successfully:\n%s", sql_query.strip())
                 if result.stdout:
-                    logger.info("stdout:\n%s", result.stdout.strip())
+                    logger.error("stdout:\n%s", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
             logger.error("❌ Subprocess failed with return code %s", e.returncode)

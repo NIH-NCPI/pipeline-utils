@@ -46,7 +46,7 @@ def write_file(filename, data, overwrite=False):
     if not overwrite:
         if filename.is_file():
             parent_dirs = filename.parent.parent.parent.parent
-            logger.info(f"File: {filename.relative_to(parent_dirs)} exists. Delete the existing file, before generating a new one.")
+            logger.debug(f"File: {filename.relative_to(parent_dirs)} exists. Delete the existing file, before generating a new one.")
             return
 
     file_handlers = {
@@ -64,7 +64,7 @@ def write_file(filename, data, overwrite=False):
     logger.debug(f"Writing {file_extension} to file: {filename}")
     file_handlers[file_extension]()
 
-    logger.info(f"Generated: {Path(filename).name}")
+    logger.debug(f"Generated: {Path(filename).name}")
 
 
 def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
@@ -77,9 +77,6 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
 
     # dbt_pipeline_utils paths
     utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
-    utils_ftd_study_data_dir = utils_root_dir / Path("data/ftd_data_dictionaries")
-    utils_ftd_tgta = utils_root_dir / Path("data/tgt_consensus_a")
-    utils_ftd_study_yml_path =  utils_ftd_study_data_dir / 'ftd_study.yaml'
 
     # dbt project paths
     dbtp_root_dir = Path.cwd()
@@ -121,9 +118,6 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
     return {
         "profiles_path": profiles_path,
         "utils_root_dir": utils_root_dir,
-        "utils_ftd_study_data_dir": utils_ftd_study_data_dir,
-        "utils_ftd_study_yml_path": utils_ftd_study_yml_path,
-        "utils_ftd_tgta": utils_ftd_tgta,
         "dbtp_root_dir": dbtp_root_dir,
         "dbtp_p_dir": dbtp_p_dir,
         "dbtp_catalog_dir": dbtp_catalog_dir,
@@ -151,11 +145,11 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
 
 
 def validate_paths(paths_dict):
-    print('Starting dir path validation')
+    logger.debug('Starting dir path validation')
     for key, path in paths_dict.items():
         if not path.exists():
-            print(f"Warning: {key} does not exist - {path}")
-    print('SUCCESS: End dir path validation')
+            logger.warning(f"Warning: {key} does not exist - {path}")
+    logger.debug('SUCCESS: End dir path validation')
 
 
 def create_model_table_abs_path(study_id, base_dir, table):
@@ -166,7 +160,7 @@ def create_model_table_abs_path(study_id, base_dir, table):
     elif base_dir == 'ftd':
         table_path = paths["dbtp_ftdc_study_dir"] / t
     else:
-        print(f"create_model_table_path does not recognize {base_dir}. Choices ['src','ftd']")
+        logger.error(f"create_model_table_path does not recognize {base_dir}. Choices ['src','ftd']")
 
     abs_table_path = table_path.resolve()
     return abs_table_path
@@ -206,4 +200,4 @@ def copy_directory(src_dir, dest_dir):
             data = read_file(item)
             write_file(target, data)        
             
-            print(f"Copied '{src_dir}' to '{dest_dir}'")
+            logger.debug(f"Copied '{src_dir}' to '{dest_dir}'")

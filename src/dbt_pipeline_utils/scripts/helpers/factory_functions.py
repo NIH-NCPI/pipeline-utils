@@ -8,7 +8,7 @@ def file_setup(study_config, ftd_config, table_name, table_info, paths):
     """file_type is not necessary when processing dds"""
 
     processor, import_type = get_data_processor(study_config, ftd_config, table_name, table_info, paths)
-    logger.info(f"Processed {import_type}")
+    logger.debug(f"Processed {import_type}")
 
     # Save local csvs for any synapse data
     if import_type == "synapse":

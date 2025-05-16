@@ -48,21 +48,21 @@ def main(study_id, src_data_path):
         if processor:
             src_df_objs.append(processor)
 
-    print(f"Start validation of {study_id} config")
+    logger.debug(f"Start validation of {study_id} config")
     validate_study_config(study_config, paths["src_data_dir"])
-    print("End validation of study config")
+    logger.debug("End validation of study config")
 
     for dd in src_dd_objs:
 
-        logger.info(f"Start pipeline db, src table creation")
+        logger.debug(f"Start pipeline db, src table creation")
         dd.generate_new_table()
 
     for dfile in src_df_objs:
 
-        logger.info(f"Importing src data into the pipeline db")
+        logger.debug(f"Importing src data into the pipeline db")
         dfile.import_data()
 
-    print(f"END SCRIPT")
+    logger.info(f"END SCRIPT")
 
 
 if __name__ == "__main__":

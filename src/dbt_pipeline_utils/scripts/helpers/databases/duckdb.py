@@ -40,14 +40,14 @@ class DuckDBFileProcessor(DatabaseBC):
             else:
                 logger.info(f"✅ Executed DuckDB SQL successfully. Table:{fully_qualified_tablename}\n%s")
                 if result.stdout:
-                    logger.info("stdout:\n%s", result.stdout.strip())
+                    logger.warning("stdout:\n%s", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
             logger.error(f"❌ Subprocess failed with return code:\n%s\n{args}", e.returncode)
             if e.stderr:
                 logger.error("stderr:\n%s", e.stderr.strip())
             if e.stdout:
-                logger.info("stdout:\n%s", e.stdout.strip())
+                logger.warning("stdout:\n%s", e.stdout.strip())
 
         except Exception as ex:
             logger.exception("❌ Unexpected error during Duckdb import:")

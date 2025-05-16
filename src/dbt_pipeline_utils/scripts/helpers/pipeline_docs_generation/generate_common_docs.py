@@ -236,7 +236,7 @@ class DocGeneration():
             data = existing_data + "\n\n" + new_data if existing_data else new_data
             write_file(filepath, data, overwrite=True) # Needs to add any new data to an existing file.
         else:
-            logger.info(f"No updates needed: {filepath}")
+            logger.debug(f"No updates needed: {filepath}")
 
 
     def generate_model_descriptions(self, output_dir):
@@ -326,7 +326,7 @@ class DocGeneration():
             src_dd_path = self.paths["src_data_dir"]
             filepath = src_dd_path / f"{table_id}_stg_dd.csv"
 
-            logger.info(f"Processing table: {table_id}")
+            logger.debug(f"Processing table: {table_id}")
 
             ddict_full_path, ddict = self.get_src_ddict_path(table_info)
 
