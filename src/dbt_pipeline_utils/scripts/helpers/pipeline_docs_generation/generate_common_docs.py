@@ -275,16 +275,18 @@ class DocGeneration():
     def generate_src_sql_files(self, output_dir):
         """Generates SQL files dynamically for each table in its respective directory."""
 
-        for table_id in self.data_dictionary.keys():
-            src_table_id = self.get_src_table_key(table_id)
-            sql_content = f"""{{{{ config(materialized='table') }}}}
+        if self.import_type != 'duckdb':
 
-    select * from {self.src_schema}.{table_id}
-    """
-            filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
+            for table_id in self.data_dictionary.keys():
+                src_table_id = self.get_src_table_key(table_id)
+                sql_content = f"""{{{{ config(materialized='table') }}}}
 
-            write_file(filepath, sql_content, overwrite=True)
+        select * from {self.src_schema}.{table_id}
+        """
+                filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
+                write_file(filepath, sql_content, overwrite=True)
+        
 
     def generate_stg_sql_files(self, column_data, output_dir):
         """Generates staging SQL files dynamically for each table based on the data dictionary."""
@@ -295,7 +297,10 @@ class DocGeneration():
             filepath = output_dir / Path(table_id) / f"{new_table}.sql"
 
             column_definitions = []
+            id_list = []
             for col_name, column_name_code, _, col_data_type, _ in column_data.get(src_table, []):
+                if column_name_code.endswith("_id"):
+                    id_list.append(column_name_code) 
                 sql_type = type_mapping.get(col_data_type, "text")
                 column_definitions.append(f'"{col_name}"::{sql_type} as "{column_name_code}"')
 
@@ -309,7 +314,7 @@ class DocGeneration():
 
     select 
         *,
-        concat(study_code, '-', participant_global_id) as ftd_key
+        concat('{id_list[0]}','-','{id_list[1]}') as ftd_key
     from source
     """
 

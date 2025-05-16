@@ -63,7 +63,7 @@ def main(study_id, project_id, tgt_id, src_data_path):
 
         generate_run_script(df_obj)
 
-    logger.info("REMINDER: Update {tgt_id} dbt_project.yml.")
+    logger.info(f"REMINDER: Update {tgt_id} dbt_project.yml.")
     logger.info("REMINDER: Check the imports rootdir/packages.yml.")
     logger.info(f"Generation complete")
 
