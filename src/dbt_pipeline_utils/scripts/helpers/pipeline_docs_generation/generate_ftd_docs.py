@@ -102,7 +102,7 @@ class FTDDocGenClass():
         
         ftd_yml = read_file(ftd_yml_path)
         utils_ftd_dd = ftd_yml.get("data_dictionary", {})
-        additions_temp_path = ftd_static_data_dir / "additions_template.csv"
+        additions_temp_path = self.paths["static_data_dir"] / "additions_template.csv"
 
         if additions_temp_path.exists:
             temp = read_file(additions_temp_path)
@@ -144,7 +144,7 @@ class FTDDocGenClass():
         for table_id, table_info in self.ftd_dd.items():
             table_key = f"{self.study_id}_ftd_{table_id}"
 
-            ddict = table_info.get("identifier")
+            ddict = table_info.get("pipeline_identifier")
             ddict_full_path = ftd_study_path / ddict
             df = read_file(ddict_full_path)
             df = df.astype(str).fillna("FTD_UNKNOWN")

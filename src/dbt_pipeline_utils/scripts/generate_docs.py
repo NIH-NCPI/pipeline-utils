@@ -1,6 +1,5 @@
 import argparse
-
-
+import os
 from dbt_pipeline_utils.scripts.helpers.pipeline_docs_generation.generation_main import (
     generate_model_docs, generate_ftd_model_docs, generate_tgt_model_docs, generate_run_script
 )
@@ -9,6 +8,41 @@ from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.validate_study_config import *
 from dbt_pipeline_utils.scripts.helpers.factory_functions import *
 from dbt_pipeline_utils import logger
+
+def generate_ftd_study_yaml(paths, project_id):
+    # Directory with your data files
+    data_dir = paths['ftd_static_data_dir']
+    
+    # List to store cleaned file metadata
+    ftd_data_dir = []
+
+    # Iterate through files in the directory
+    for filename in os.listdir(data_dir):
+        if not filename.endswith("template.csv"):
+            for suffix in ("-dd.csv", "_dd.csv"):
+                if filename.endswith(suffix):
+                    clean_id = filename[:-len(suffix)]
+            table_id = clean_id.replace('-', "_").lower()
+            identifier = filename
+            pipeline_identifier = f"ftd_{table_id}_dd.csv"
+            ftd_data_dir.append((table_id, identifier, pipeline_identifier))
+
+    # Build the data_dictionary section
+    dds = {}
+    for table_id, identifier, pipeline_identifier in ftd_data_dir:
+        dds[table_id] = {
+            "identifier": identifier,
+            "pipeline_identifier": pipeline_identifier,
+        }
+
+    # Build final YAML dictionary
+    dbt_config = {
+        "study_id": project_id,
+        "data_dictionary": dds,
+    }
+
+    # Write the YAML to a file
+    write_file(paths['ftd_study_yml_path'], dbt_config, overwrite=True)
 
 
 def main(study_id, project_id, tgt_id, src_data_path):
@@ -23,6 +57,9 @@ def main(study_id, project_id, tgt_id, src_data_path):
             path.mkdir(parents=True, exist_ok=True)
             logger.debug(f"Path {path} exists")
     validate_paths(paths)
+
+    generate_ftd_study_yaml(paths, project_id)
+
 
     study_config = read_file(paths["study_yml_path"])
     ftd_config = read_file(paths["ftd_study_yml_path"])

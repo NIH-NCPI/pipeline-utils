@@ -138,6 +138,7 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
         "study_yml_path": study_yml_path,
         "ftd_study_data_dir": ftd_study_data_dir,
         "trans_study_data_dir":trans_study_data_dir,
+        "static_data_dir":static_data_dir,
         "ftd_static_data_dir":ftd_static_data_dir,
         "tgt_static_data_dir":tgt_static_data_dir,
         "ftd_study_yml_path": ftd_study_yml_path
@@ -149,6 +150,8 @@ def validate_paths(paths_dict):
     for key, path in paths_dict.items():
         if not path.exists():
             logger.warning(f"Warning: {key} does not exist - {path}")
+            if key == 'ftd_study_yml_path':
+                logger.info(f'Ignore warning for ftd_study_yml_path on the first generation run.')
     logger.debug('SUCCESS: End dir path validation')
 
 
