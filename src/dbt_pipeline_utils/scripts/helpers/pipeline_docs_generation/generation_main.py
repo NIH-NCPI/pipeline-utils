@@ -29,6 +29,8 @@ def generate_model_docs(df_obj):
 def generate_ftd_model_docs(df_obj):
     """Main function to generate dbt model files, loading column data once."""
 
+    # NOTE: The data/project_id/ftd_study.yaml is also generated. See generate_docs.generate_ftd_study_yaml.
+
     df_obj.generate_ftd_dds()
 
     column_data = df_obj.load_ftd_column_data()

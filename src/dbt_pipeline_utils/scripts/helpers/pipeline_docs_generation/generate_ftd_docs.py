@@ -22,7 +22,7 @@ class FTDDocGenClass():
         # Define table-specific schema and materialization
         study_info = {}
 
-        for table_id in self.data_dictionary.keys():
+        for table_id in self.ftd_dd.keys():
             study_info[f"{self.study_id}_ftd_{table_id}"] = {
                 "+schema": self.src_schema,
                 "+materialized": "table"
@@ -61,7 +61,7 @@ class FTDDocGenClass():
             column_definitions = []
             joins = []
 
-            for col_name, _, _, col_data_type, src_var_name in column_data.get(new_table, []):
+            for col_name, f_col_name, _, col_data_type, _, comment, src_var_name in column_data.get(new_table, []):
                 sql_type = type_mapping.get(col_data_type, "text")
 
                 alias = 'GEN_UNKNOWN'
@@ -69,13 +69,18 @@ class FTDDocGenClass():
                     if src_var_name in cols:
                         alias = src_id
                         break
+                    
+                src_col=f'{alias}.{src_var_name}'
+                if "Foreign Key:" in comment or src_var_name == 'id':
+                    src_col=f"{{{{ generate_global_id(prefix='',descriptor=[''], study_id='{self.study_id}') }}}}"
 
-                column_definitions.append(f'{alias}.{src_var_name}::{sql_type} as "{col_name}"')
+
+                column_definitions.append(f'{src_col}::{sql_type} as "{f_col_name}"')
 
             base_table = list(src_table_columns.keys())[0]
             for src_id in src_table_columns.keys():
                 if src_id != base_table:
-                    joins.append(f"join {{{{ ref('{self.study_id}_stg_{src_id}') }}}} as {src_id} using (ftd_key)")
+                    joins.append(f"join {{{{ ref('{self.study_id}_stg_{src_id}') }}}} as {src_id}\non {self.get_join_conditions(src_id)} ")
 
             
             sql_content = f"""{{{{ config(materialized='table', schema='{self.study_id}_data') }}}}
@@ -118,6 +123,9 @@ class FTDDocGenClass():
                 continue
 
             utils_df["src_variable_name"] = utils_df["variable_name"]
+
+            # TODO clean/map dd cols. Currently overwriting a col name inconsistancy 
+            utils_df['variable_description'] = utils_df['description']
 
             trans_path = trans_study_data_dir / f"{table_id}_stg_additions_dd.csv"
 

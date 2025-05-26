@@ -185,3 +185,18 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
             logger.error(f"{table_info.get("import_type")} is not valid")
             
         return src_dd_path / Path(f"{ddict}"), ddict
+    
+    def get_join_conditions(self, current_table):
+
+        join_cols = self.data_files.get(current_table, {}).get("join_cols", {})
+
+        for join_table, left_column in join_cols.items():
+            # Get the right column from the join_table's join_cols (pointing back to current_table)
+            right_column = self.data_files.get(join_table, {}).get("join_cols", {}).get(current_table)
+
+            if right_column:
+                # join_table.right_column = current_table.left_column
+                return f"{join_table}.{right_column} = {current_table}.{left_column}"
+                
+
+        return ''

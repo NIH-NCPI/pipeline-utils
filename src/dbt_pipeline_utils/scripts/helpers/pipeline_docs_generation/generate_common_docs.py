@@ -18,6 +18,8 @@ class DocGeneration():
                 row[column_map["formatted_variable_name"]].lower().replace(" ", "_"),
                 row.get(column_map["description"]),
                 row.get(column_map["data_type"]),
+                row.get(column_map["enumerations"]),
+                row.get(column_map["comment"]),
                 row.get(column_map["src_variable_name"]),
             )
             for _, row in df.iterrows()
@@ -105,19 +107,17 @@ class DocGeneration():
                 id_tables = [f"{self.study_id}_ftd_{table_id}"]
             if not ftd_model:
                 table_models_dir = output_dir / Path(f"{table_id}")
-                # id_tables = [f"{self.study_id}_src_{table_id}", f"{self.study_id}_stg_{table_id}"]
-                # if self.table_info['import_type'] == 'duckdb':
                 id_tables = [f"{self.study_id}_stg_{table_id}"]
 
             for table_name in id_tables:
 
                 columns_metadata = [
                     {
-                        "name": col_name,
+                        "name": col_name_code,
                         "description": f'{{{{ doc("{table_name}_{col_name_code}") }}}}',
                         "data_type": col_data_type,
                     }
-                    for col_name, col_name_code, _, col_data_type, _ in column_data.get(
+                    for col_name, col_name_code, _, col_data_type, _, _, _ in column_data.get(
                         table_name, []
                     )
                 ]
@@ -158,7 +158,7 @@ class DocGeneration():
                     "description": f'{{{{ doc("{src_filename}_{col_name_code}") }}}}'
                 }
 
-                for col_name, col_name_code, _, _, _ in column_data.get(f"{src_filename}", [])
+                for col_name, col_name_code, _, _, _, _, _ in column_data.get(f"{src_filename}", [])
             ]
 
 
@@ -222,7 +222,7 @@ class DocGeneration():
                     new_descriptions.append(table_desc_block)
                     existing_col_doc_ids.add(table_desc_id)
 
-                for col_name, col_name_code, col_description, _, _ in column_data.get(table_key, []):
+                for col_name, col_name_code, col_description, _, _, _, _ in column_data.get(table_key, []):
                     col_doc_id = f"{table_key}_{col_name_code}"
                     col_desc_block = f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}\n"
 
@@ -298,7 +298,7 @@ class DocGeneration():
 
             column_definitions = []
             id_list = []
-            for col_name, column_name_code, _, col_data_type, _ in column_data.get(src_table, []):
+            for col_name, column_name_code, _, col_data_type, _, _, _ in column_data.get(src_table, []):
                 if column_name_code.endswith("_id"):
                     id_list.append(column_name_code) 
                 sql_type = type_mapping.get(col_data_type, "text")

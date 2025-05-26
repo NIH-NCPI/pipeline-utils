@@ -13,7 +13,12 @@ DD_FORMATS = {
         "variable_name": "Variable Name",
         "formatted_variable_name": "Variable Name",
         "description": "Description",
-        "data_type": None,  # Not available in type1
+        "data_type": None, 
+        "min": None,
+        "max": None,
+        "units": None,
+        "enumerations": None,
+        "comment": None,
         "src_variable_name": "src_variable_name",  # Generated, for stg dds
     },
     # Generated/intermediate pipeline dds, will follow the same format (pipeline_format)
@@ -22,6 +27,11 @@ DD_FORMATS = {
         "formatted_variable_name": "variable_name",
         "description": "variable_description",
         "data_type": "data_type",
+        "min": "min",
+        "max": "max",
+        "units": "units",
+        "enumerations": "enumerations",
+        "comment": "comment",
         "src_variable_name": "src_variable_name",
     },
 }

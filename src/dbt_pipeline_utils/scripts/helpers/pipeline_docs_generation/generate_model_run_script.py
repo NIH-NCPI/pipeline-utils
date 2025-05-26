@@ -61,12 +61,12 @@ class RunScriptClass():
 
         commands_list.append("# Run Target tables") 
 
-        tgt_tables = {
-            "participant": {"source_table": f"{study_id}_ftd_participant", "target_schema": f"{study_id}_tgt_data"},
-            "condition": {"source_table": f"{study_id}_ftd_condition", "target_schema": f"{study_id}_tgt_data"},
-            "event": {"source_table": f"{study_id}_ftd_event", "target_schema": f"{study_id}_tgt_data"},
-            "measurement": {"source_table": f"{study_id}_ftd_measurement", "target_schema": f"{study_id}_tgt_data"}
-        }
+
+
+        tgt_tables = {}
+        for table_id, table_info in self.ftd_dd.items():
+           tgt_tables[f"{table_id}"]= {"source_table": f"{self.study_id}_ftd_{table_id}", "target_schema": f"{self.study_id}_tgt_data"}
+
 
         for table, args in tgt_tables.items():
             commands_list.append(self.generate_run_command("model", f"tgt_{table}", args))
@@ -76,7 +76,7 @@ class RunScriptClass():
         filepath = scripts_dir / f"run_{study_id}.sh"
 
         # Write the script to a file
-        write_file(filepath, data)
+        write_file(filepath, data, overwrite=False)
 
         # Edit script permissions
         subprocess.run(["chmod", "+x", filepath], check=True)
