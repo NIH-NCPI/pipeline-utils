@@ -84,10 +84,11 @@ class FTDDocGenClass():
 
             
             sql_content = f"""{{{{ config(materialized='table', schema='{self.study_id}_data') }}}}
+            backslash_char = "\"
 
     with source as (
         select 
-        {",\n       ".join(column_definitions)}
+        {",{backslash_char}n       ".join(column_definitions)}
         from {{{{ ref('{self.study_id}_stg_{base_table}') }}}} as {base_table}
         {' '.join(joins)}
     )
