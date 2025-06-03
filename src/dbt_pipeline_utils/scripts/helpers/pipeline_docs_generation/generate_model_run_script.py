@@ -35,7 +35,7 @@ class RunScriptClass():
         """Generates a dbt run command for models or macros with optional arguments."""
         
         if operation == 'macro':
-            all_args = f"--args '{' '.join(f'\"{k}\": \"{v}\"' for k, v in args.items())}'" if args else ""
+            all_args = f"--args '{' '.join(f'{BACKSLASH_CHAR}"{k}{BACKSLASH_CHAR}": {BACKSLASH_CHAR}"{v}{BACKSLASH_CHAR}"' for k, v in args.items())}'" if args else ""
             op = f'dbt run-operation {model} {all_args}'.strip()
         
         elif operation == 'model':

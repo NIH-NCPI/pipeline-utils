@@ -215,7 +215,7 @@ class DocGeneration():
 
                 table_description = table_info.get("description", f"Model for {table_key}.")
                 table_desc_id = f"{table_key}_description"
-                table_desc_block = f"{{% docs {table_desc_id} %}}\n{table_description}\n{{% enddocs %}}\n"
+                table_desc_block = f"{{% docs {table_desc_id} %}}{BACKSLASH_CHAR}n{table_description}{BACKSLASH_CHAR}n{{% enddocs %}}{BACKSLASH_CHAR}n"
 
                 # Add table description if not already present
                 if table_desc_id not in existing_col_doc_ids:
@@ -224,7 +224,7 @@ class DocGeneration():
 
                 for col_name, col_name_code, col_description, _, _, _, _ in column_data.get(table_key, []):
                     col_doc_id = f"{table_key}_{col_name_code}"
-                    col_desc_block = f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}\n"
+                    col_desc_block = f"{{% docs {col_doc_id} %}}{BACKSLASH_CHAR}n{col_description}{BACKSLASH_CHAR}n{{% enddocs %}}{BACKSLASH_CHAR}n"
 
                     if col_doc_id not in existing_col_doc_ids:
                         new_descriptions.append(col_desc_block)
@@ -250,7 +250,7 @@ class DocGeneration():
             grouped_tables.setdefault(prefix, []).append((table_id, table_info))
 
         for prefix, tables in grouped_tables.items():
-            model_descriptions.append(f"### {prefix.capitalize()} Models\n")
+            model_descriptions.append(f"### {prefix.capitalize()} Models{BACKSLASH_CHAR}n")
 
             for table_id, table_info in tables:
                 src_table_id = self.get_src_table_key(table_id)
@@ -258,12 +258,12 @@ class DocGeneration():
                     "description", f"Model for {src_table_id}."
                 )
                 model_descriptions.append(
-                    f"{{% docs {src_table_id} %}}\n{src_description}\n{{% enddocs %}}\n"
+                    f"{{% docs {src_table_id} %}}{BACKSLASH_CHAR}n{src_description}{BACKSLASH_CHAR}n{{% enddocs %}}{BACKSLASH_CHAR}n"
                 )
 
                 stg_table_id = f"{self.study_id}_stg_{table_id}"
                 stg_description = table_info.get("description", f"Model for {stg_table_id}.")
-                model_descriptions.append(f"{{% docs {stg_table_id} %}}\n{stg_description}\n{{% enddocs %}}\n")
+                model_descriptions.append(f"{{% docs {stg_table_id} %}}{BACKSLASH_CHAR}n{stg_description}{BACKSLASH_CHAR}n{{% enddocs %}}{BACKSLASH_CHAR}n")
 
                 data = "\n".join(model_descriptions)
 
@@ -305,11 +305,10 @@ class DocGeneration():
                 column_definitions.append(f'"{col_name}"::{sql_type} as "{column_name_code}"')
 
             sql_content = f"""{{{{ config(materialized='table') }}}}
-            backslash_char = "\"
 
     with source as (
         select 
-        {",{backslash_char}n       ".join(column_definitions)}
+        {",{BACKSLASH_CHAR}n       ".join(column_definitions)}
         from {{{{ source('{self.study_id}','{src_table}') }}}}
     )
 
