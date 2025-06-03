@@ -182,7 +182,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
             ddict = table_info.get("identifier")
 
         if table_info.get("import_type") not in ['pg', 'duckdb', 'synapse']:
-            logger.error(f"{table_info.get("import_type")} is not valid")
+            logger.error(f"{table_info.get('import_type')} is not valid")
             
         return src_dd_path / Path(f"{ddict}"), ddict
     
