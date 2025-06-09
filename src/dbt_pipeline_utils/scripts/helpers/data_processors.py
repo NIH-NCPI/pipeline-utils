@@ -126,7 +126,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         csv_file = self.paths["src_data_dir"] / Path(f"{self.src_data_csv}")
 
         sql_query = f"""
-        \\COPY {self.src_schema}.{self.new_table_name} FROM '{csv_file}' DELIMITER ',' CSV HEADER;
+       {BACKSLASH_CHAR}{BACKSLASH_CHAR}COPY {self.src_schema}.{self.new_table_name} FROM '{csv_file}' DELIMITER ',' CSV HEADER;
         """
 
         try:

@@ -2,49 +2,60 @@ import json
 from dbt_pipeline_utils.scripts.helpers.general import *
 import subprocess
 
-class RunScriptClass():
+
+class RunScriptClass:
 
     def generate_run_command(self, operation, model, args=None):
         """Generates a dbt run command for models or macros with optional arguments."""
-        
-        if operation == 'macro':
+
+        if operation == "macro":
             if args:
-                args_parts = ["--args '{"] + [f'"{k}": "{v}"' for k, v in args.items()] + ["}'"]
+                args_parts = (
+                    ["--args '{"] + [f'"{k}": "{v}"' for k, v in args.items()] + ["}'"]
+                )
                 all_args = " ".join(args_parts)
             else:
                 all_args = ""
-            
-            op = f'dbt run-operation {model} {all_args}'.strip()
-        
-        elif operation == 'model':
+
+            op = f"dbt run-operation {model} {all_args}".strip()
+
+        elif operation == "model":
             if args:
-                args_parts = ['--vars "{'] + [f'{k}: {v}' for k, v in args.items()] + ['}"']
+                args_parts = (
+                    ['--vars "{'] + [f"{k}: {v}" for k, v in args.items()] + ['}"']
+                )
                 all_args = " ".join(args_parts)
             else:
                 all_args = ""
-            
-            op = f'dbt run --select {model} {all_args}'.strip()
+
+            op = f"dbt run --select {model} {all_args}".strip()
 
         else:
             raise ValueError("Invalid operation type. Use 'macro' or 'model'.")
-        
+
         return op
 
-
     def generate_run_command(self, operation, model, args=None):
         """Generates a dbt run command for models or macros with optional arguments."""
-        
-        if operation == 'macro':
-            all_args = f"--args '{' '.join(f'\"{k}\": \"{v}\"' for k, v in args.items())}'" if args else ""
-            op = f'dbt run-operation {model} {all_args}'.strip()
-        
-        elif operation == 'model':
+
+        def escaped_args(k, v):
+            return f'{BACKSLASH_CHAR}"{k}{BACKSLASH_CHAR}": {BACKSLASH_CHAR}"{v}{BACKSLASH_CHAR}"'
+
+        if operation == "macro":
+            all_args = (
+                f'--args {" ".join(escaped_args(k, v) for k, v in args.items())}'
+                if args
+                else ""
+            )
+            op = f"dbt run-operation {model} {all_args}".strip()
+
+        elif operation == "model":
             all_args = f"--vars '{json.dumps(args)}'" if args else ""
-            op = f'dbt run --select +{model} {all_args}'.strip()
+            op = f"dbt run --select +{model} {all_args}".strip()
 
         else:
             raise ValueError("Invalid operation type. Use 'macro' or 'model'.")
-        
+
         return op
 
     def generate_dbt_run_script(self):
@@ -53,23 +64,25 @@ class RunScriptClass():
         scripts_dir = self.paths["dbtp_scripts_dir"]
 
         commands_list = [
-        "#!/bin/bash",
-        "set -e  # Exit on error",
-        "dbt clean",
-        'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
-    ]
+            "#!/bin/bash",
+            "set -e  # Exit on error",
+            "dbt clean",
+            'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
+        ]
 
-        commands_list.append("# Run Target tables") 
-
-
+        commands_list.append("# Run Target tables")
 
         tgt_tables = {}
         for table_id, table_info in self.ftd_dd.items():
-           tgt_tables[f"{table_id}"]= {"source_table": f"{self.study_id}_ftd_{table_id}", "target_schema": f"{self.study_id}_tgt_data"}
-
+            tgt_tables[f"{table_id}"] = {
+                "source_table": f"{self.study_id}_ftd_{table_id}",
+                "target_schema": f"{self.study_id}_tgt_data",
+            }
 
         for table, args in tgt_tables.items():
-            commands_list.append(self.generate_run_command("model", f"tgt_{table}", args))
+            commands_list.append(
+                self.generate_run_command("model", f"tgt_{table}", args)
+            )
 
         # Final script content
         data = "\n".join(commands_list) + "\n"
