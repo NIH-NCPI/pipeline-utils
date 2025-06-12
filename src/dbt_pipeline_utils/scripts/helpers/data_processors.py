@@ -18,7 +18,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         self.table_name = table_name
         self.table_info = table_info
         self.paths = paths
-        self.profiles_path = paths.get("profiles_path_root")
+        self.profiles_path = paths.get("profiles_path")
         self.profile = ""
         self.src_schema = ""
         self.src_data_csv =  ""

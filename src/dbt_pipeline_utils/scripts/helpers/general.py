@@ -71,15 +71,15 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
     """
     For automatic validation of dir path creation, end the dir variables with "dir"
     """
+    # dbt profiles path
 
-    profiles_path_home = Path.home() / ".dbt/profiles.yml"
+    profiles_path = Path.home() / ".dbt/profiles.yml"
 
     # dbt_pipeline_utils paths
     utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
 
     # dbt project paths
     dbtp_root_dir = Path.cwd()
-    profiles_path_root = dbtp_root_dir / "profiles.yml"
     dbtp_p_dir = dbtp_root_dir / Path(f"{project_id}")
     dbtp_catalog_dir = dbtp_p_dir / Path("catalog")
     dbtp_scripts_dir = dbtp_p_dir / Path("scripts")
@@ -116,8 +116,7 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
     ftd_study_yml_path =  src_data_dir / 'ftd_study.yaml'
 
     return {
-        "profiles_path_root": profiles_path_root,
-        "profiles_path_home": profiles_path_home,
+        "profiles_path": profiles_path,
         "utils_root_dir": utils_root_dir,
         "dbtp_root_dir": dbtp_root_dir,
         "dbtp_p_dir": dbtp_p_dir,
