@@ -36,14 +36,14 @@ class DuckDBFileProcessor(DatabaseBC):
                 check=True,
             )
             if result.stderr and "ERROR" in result.stderr:
-                logger.error(f"❌ DuckDB import failed with error:{BACKSLASH_CHAR}n%s{BACKSLASH_CHAR}nTable:{fully_qualified_tablename}", result.stderr.strip())
+                logger.error(f"❌ DuckDB import failed with error:\n%s\nTable:{fully_qualified_tablename}", result.stderr.strip())
             else:
-                logger.info(f"✅ Executed DuckDB SQL successfully. Table:{fully_qualified_tablename}{BACKSLASH_CHAR}n%s")
+                logger.info(f"✅ Executed DuckDB SQL successfully. Table:{fully_qualified_tablename}\n%s")
                 if result.stdout:
                     logger.warning("stdout:\n%s", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"❌ Subprocess failed with return code:{BACKSLASH_CHAR}n%s{BACKSLASH_CHAR}n{args}", e.returncode)
+            logger.error(f"❌ Subprocess failed with return code:\n%s\n{args}", e.returncode)
             if e.stderr:
                 logger.error("stderr:\n%s", e.stderr.strip())
             if e.stdout:

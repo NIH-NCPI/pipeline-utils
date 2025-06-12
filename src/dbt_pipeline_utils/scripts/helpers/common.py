@@ -1,5 +1,3 @@
-BACKSLASH_CHAR = '\\'
-
 # Map common data types to PostgreSQL types
 type_mapping = {
     "string": "text",
