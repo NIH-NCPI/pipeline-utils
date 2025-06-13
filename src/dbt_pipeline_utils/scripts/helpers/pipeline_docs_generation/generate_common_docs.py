@@ -305,11 +305,10 @@ class DocGeneration():
                 column_definitions.append(f'"{col_name}"::{sql_type} as "{column_name_code}"')
 
             sql_content = f"""{{{{ config(materialized='table') }}}}
-            backslash_char = "\"
 
     with source as (
         select 
-        {",{backslash_char}n       ".join(column_definitions)}
+        {",\n       ".join(column_definitions)}
         from {{{{ source('{self.study_id}','{src_table}') }}}}
     )
 
