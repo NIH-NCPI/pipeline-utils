@@ -18,7 +18,7 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         self.table_name = table_name
         self.table_info = table_info
         self.paths = paths
-        self.profiles_path = paths.get("profiles_path")
+        self.profiles_path = paths.get("profiles_path_home")
         self.profile = ""
         self.src_schema = ""
         self.src_data_csv =  ""
@@ -40,7 +40,14 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
             setattr(self, key, value)
 
         self.new_table_name = Path(self.get_src_table_key(self.table_name)).stem
+        # self.datafile_info = self.data_aryfiles.get(table_name, {})
+        # self.dd_info = self.data_diction.get(table_name, {})
 
+        # # These attributes will be created based off of the table object.
+        # for key, value in self.datafile_info.items():
+        #     setattr(self, f'(df_{key})', value)
+        # for key, value in self.dd_info.items():
+        #     setattr(self, f'(dd_{key})', value)
 
         # Make the profile_keys into attributes
         pipeline_db_vars = self.get_db_vars()

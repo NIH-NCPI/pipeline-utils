@@ -21,6 +21,18 @@ DD_FORMATS = {
         "comment": None,
         "src_variable_name": "src_variable_name",  # Generated, for stg dds
     },
+    "src_type2": {
+        "variable_name": "Source Column [PL]",
+        "formatted_variable_name": "Source Column [PL]",
+        "description": "Condition or Measure Source Text [PL]",
+        "data_type": None, 
+        "min": None,
+        "max": None,
+        "units": None,
+        "enumerations": None,
+        "comment": None,
+        "src_variable_name": "src_variable_name",  # Generated, for stg dds
+    },
     # Generated/intermediate pipeline dds, will follow the same format (pipeline_format)
     "pipeline_format": {
         "variable_name": "variable_name",
