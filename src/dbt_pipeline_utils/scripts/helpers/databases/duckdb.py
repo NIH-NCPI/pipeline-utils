@@ -94,3 +94,9 @@ class DuckDBFileProcessor(DatabaseBC):
         filepath = self.paths["dbtp_src_study_dir"] / "dbt_project.yml"
 
         write_file(filepath, dbt_config)
+
+    def get_src_table_key(self, table_id):
+        '''
+        The filename that is stored with column data. 
+        '''
+        return Path(self.src_data_csv).stem

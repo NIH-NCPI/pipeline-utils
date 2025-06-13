@@ -9,7 +9,8 @@ class SynapseFileProcessor(DatabaseBC):
 
         self.profile = 'synapse'
         self.src_schema = f'{self.study_id}_src_data'
-        self.src_data_csv =  self.src_file_id # Identifies the csv file containing data to be imported.
+        self.identifier = self.table_info.get("identifier")
+        self.src_data_csv =  self.table_info.get("src_file_id") # Identifies the csv file containing data to be imported.
         
 
     def login_to_synapse():
@@ -36,6 +37,7 @@ class SynapseFileProcessor(DatabaseBC):
         path of the cached file to 'read it in'. Then, write the file to the dir it 
         is expected to be found by dbt_pipeline_utils functions. 
         """
+        # pass
         logger.info(f"Logging in to Synapse.")
         syn = synapseclient.Synapse()
         syn = synapseclient.login()

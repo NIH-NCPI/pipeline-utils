@@ -11,19 +11,36 @@ class DocGeneration():
         """
 
         column_map = DD_FORMATS[dd_format]  # Define dd column expectations
-        
-        column_data_list = [
-            (
-                row[column_map["variable_name"]],
-                row[column_map["formatted_variable_name"]].lower().replace(" ", "_"),
-                row.get(column_map["description"]),
-                row.get(column_map["data_type"]),
-                row.get(column_map["enumerations"]),
-                row.get(column_map["comment"]),
-                row.get(column_map["src_variable_name"]),
-            )
-            for _, row in df.iterrows()
-        ]
+        column_data_list = []
+
+        for idx, row in df.iterrows():
+            try:
+                # variable_name (required — if NaN, fallback to 'unknown')
+                variable_name = row.get(column_map["variable_name"]) or None
+                formatted_variable_name = (
+                        str(variable_name).lower().replace(" ", "_").replace(",", "_")
+                    ) or None
+
+                description = row.get(column_map["description"]) or None
+                data_type = row.get(column_map["data_type"]) or None
+                enumerations = row.get(column_map["enumerations"]) or None
+                comment = row.get(column_map["comment"]) or None
+                src_variable_name = row.get(column_map["src_variable_name"]) or None
+
+                column_data_list.append((
+                    variable_name,
+                    formatted_variable_name,
+                    description,
+                    data_type,
+                    enumerations,
+                    comment,
+                    src_variable_name,
+                ))
+
+            except Exception as e:
+                print(f"Error at row {idx}: {e}")
+                print(f"Row content: {row}")
+                raise
 
         return column_data_list
     
@@ -275,7 +292,7 @@ class DocGeneration():
     def generate_src_sql_files(self, output_dir):
         """Generates SQL files dynamically for each table in its respective directory."""
 
-        if self.import_type != 'duckdb':
+        if self.table_info['import_type'] != 'duckdb':
 
             for table_id in self.data_dictionary.keys():
                 src_table_id = self.get_src_table_key(table_id)
@@ -327,7 +344,7 @@ class DocGeneration():
         open the src dd and apply minimal transformations"""
 
         for table_id, table_info in self.data_dictionary.items():
-            src_table_key = f"{self.study_id}_src_{table_id}"
+            src_table_key = self.get_src_table_key(table_id)
             src_dd_path = self.paths["src_data_dir"]
             filepath = src_dd_path / f"{table_id}_stg_dd.csv"
 
@@ -341,7 +358,7 @@ class DocGeneration():
 
             column_mapping = {
                 col_name: column_name_code
-                for col_name, column_name_code, _, _, _ in column_data.get(src_table_key, [])
+                for col_name, column_name_code, _, _, _, _, _ in column_data.get(src_table_key, [])
             }
 
             format_type = table_info.get("format")

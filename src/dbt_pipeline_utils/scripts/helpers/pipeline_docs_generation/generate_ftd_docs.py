@@ -118,14 +118,14 @@ class FTDDocGenClass():
             ddict = table_info.get("identifier")
             ddict_full_path = ftd_static_data_dir / ddict
             if ddict_full_path.exists:
-                utils_df = read_file(ddict_full_path)
+                utils_df = pd.DataFrame(read_file(ddict_full_path))
             else:
                 continue
 
-            utils_df["src_variable_name"] = utils_df["variable_name"]
+            utils_df["src_variable_name"] = utils_df.loc[:, utils_df.columns[0]]
 
             # TODO clean/map dd cols. Currently overwriting a col name inconsistancy 
-            utils_df['variable_description'] = utils_df['description']
+            utils_df['variable_description'] = utils_df.loc[:, utils_df.columns[1]]
 
             trans_path = trans_study_data_dir / f"{table_id}_stg_additions_dd.csv"
 
