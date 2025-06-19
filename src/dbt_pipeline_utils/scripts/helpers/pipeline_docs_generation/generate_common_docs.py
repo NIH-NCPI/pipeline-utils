@@ -18,11 +18,16 @@ class DocGeneration():
                 # variable_name (required — if NaN, fallback to 'unknown')
                 variable_name = row.get(column_map["variable_name"]) or None
                 formatted_variable_name = (
-                        str(variable_name).lower().replace(" ", "_").replace(",", "_")
+                        str(variable_name).lower().replace(" ", "_").replace(",", "_").replace("-", "_")
                     ) or None
 
+
                 description = row.get(column_map["description"]) or None
-                data_type = row.get(column_map["data_type"]) or None
+
+                data_type = row.get(column_map["data_type"])
+                if pd.isna(data_type):
+                    data_type = "string"
+
                 enumerations = row.get(column_map["enumerations"]) or None
                 comment = row.get(column_map["comment"]) or None
                 src_variable_name = row.get(column_map["src_variable_name"]) or None
@@ -330,9 +335,9 @@ class DocGeneration():
     )
 
     select 
-        *,
-        concat('{id_list[0]}','-','{id_list[1]}') as ftd_key
-    from source
+        ROW_NUMBER() OVER () AS ftd_index
+        ,source.*
+        from source
     """
 
             # Write SQL file to the correct directory
@@ -384,7 +389,7 @@ class DocGeneration():
             t_path = src_dd_path / Path(f"ftd_transformations/{table_id}_stg_additions_dd.csv")
             if t_path.exists():  
                 transformations = read_file(t_path)
-                stg_df = pd.concat([stg_df, transformations], ignore_index=True)
+                stg_df = pd.concat([stg_df, transformations])
             else:
                 pass
 
