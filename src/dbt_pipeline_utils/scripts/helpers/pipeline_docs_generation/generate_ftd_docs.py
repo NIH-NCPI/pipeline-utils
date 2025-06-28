@@ -61,7 +61,7 @@ class FTDDocGenClass():
             column_definitions = []
             joins = []
 
-            for col_name, f_col_name, _, col_data_type, _, comment, src_var_name in column_data.get(new_table, []):
+            for col_name, f_col_name, _, col_data_type, _, comment, src_var_name, _  in column_data.get(new_table, []):
                 sql_type = type_mapping.get(col_data_type, "text")
 
                 alias = 'GEN_UNKNOWN'

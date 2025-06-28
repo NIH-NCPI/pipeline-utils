@@ -1,5 +1,6 @@
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.general import *
+from dbt_pipeline_utils.scripts.helpers.pipeline_docs_generation.model_tests import format_tests
 import re
 
 class DocGeneration():
@@ -31,6 +32,8 @@ class DocGeneration():
                 enumerations = row.get(column_map["enumerations"]) or None
                 comment = row.get(column_map["comment"]) or None
                 src_variable_name = row.get(column_map["src_variable_name"]) or None
+                tests = row.get(column_map["tests"]) or None
+
 
                 column_data_list.append((
                     variable_name,
@@ -40,6 +43,7 @@ class DocGeneration():
                     enumerations,
                     comment,
                     src_variable_name,
+                    tests
                 ))
 
             except Exception as e:
@@ -138,8 +142,10 @@ class DocGeneration():
                         "name": col_name_code,
                         "description": f'{{{{ doc("{table_name}_{col_name_code}") }}}}',
                         "data_type": col_data_type,
+                        **({"tests": format_tests(tests,enums)} if tests is not None else {}),
+
                     }
-                    for col_name, col_name_code, _, col_data_type, _, _, _ in column_data.get(
+                    for col_name, col_name_code, _, col_data_type, enums, _, _, tests in column_data.get(
                         table_name, []
                     )
                 ]
@@ -180,7 +186,7 @@ class DocGeneration():
                     "description": f'{{{{ doc("{src_filename}_{col_name_code}") }}}}'
                 }
 
-                for col_name, col_name_code, _, _, _, _, _ in column_data.get(f"{src_filename}", [])
+                for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
             ]
 
 
@@ -244,7 +250,7 @@ class DocGeneration():
                     new_descriptions.append(table_desc_block)
                     existing_col_doc_ids.add(table_desc_id)
 
-                for col_name, col_name_code, col_description, _, _, _, _ in column_data.get(table_key, []):
+                for col_name, col_name_code, col_description, _, _, _, _, _  in column_data.get(table_key, []):
                     col_doc_id = f"{table_key}_{col_name_code}"
                     col_desc_block = f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}\n"
 
@@ -320,7 +326,7 @@ class DocGeneration():
 
             column_definitions = []
             id_list = []
-            for col_name, column_name_code, _, col_data_type, _, _, _ in column_data.get(src_table, []):
+            for col_name, column_name_code, _, col_data_type, _, _, _, _  in column_data.get(src_table, []):
                 if column_name_code.endswith("_id"):
                     id_list.append(column_name_code) 
                 sql_type = type_mapping.get(col_data_type, "text")
@@ -363,7 +369,7 @@ class DocGeneration():
 
             column_mapping = {
                 col_name: column_name_code
-                for col_name, column_name_code, _, _, _, _, _ in column_data.get(src_table_key, [])
+                for col_name, column_name_code, _, _, _, _, _, _ in column_data.get(src_table_key, [])
             }
 
             format_type = table_info.get("format")

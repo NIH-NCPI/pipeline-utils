@@ -33,5 +33,6 @@ DD_FORMATS = {
         "enumerations": "enumerations",
         "comment": "comment",
         "src_variable_name": "src_variable_name",
+        "tests": "tests"
     },
 }
