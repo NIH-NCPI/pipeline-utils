@@ -126,20 +126,30 @@ for _, row in df.iterrows():
                 'hpo_codes_with_prefix': i
             })
 
-
-
-# Convert the expanded rows into a DataFrame
 df_explode = pd.DataFrame(df_explode)
 
-# Manual additions
-mapping = {
+icd_map = {
     'change_in_skin_texture': 'Changes in skin texture',
-    'do_not_resuscitate_status':'Do not resuscitate',
-    'bmi':'Body mass index [BMI]'
+    'do_not_resuscitate_status': 'Do not resuscitate'
 }
-for key, value in mapping.items():
+
+for key, value in icd_map.items():
     df_explode.loc[df_explode['condition_name'] == key, 'icd10cm_label'] = value
 
-df_explode.to_csv(new_file_path, index=False)
+additions = pd.DataFrame([
+    {'condition_name': 'bmi', 'icd9_codes_with_prefix': None, 'icd10_codes_with_prefix': None, 'icd10cm_label': None,
+    'icdO_codes_with_prefix': None, 'mondo_label': None, 'mondo_codes_with_prefix': None, 'hpo_label': None,
+    'hpo_codes_with_prefix': None, 'loinc_code': 'LOINC:39156-5', 'loinc_label': 'Body mass index (BMI)'},
+    {'condition_name': 'height', 'icd9_codes_with_prefix': None, 'icd10_codes_with_prefix': None, 'icd10cm_label': None,
+    'icdO_codes_with_prefix': None, 'mondo_label': None, 'mondo_codes_with_prefix': None, 'hpo_label': None,
+    'hpo_codes_with_prefix': None, 'loinc_code': 'LOINC:8302-2', 'loinc_label': 'Body height'},
+    {'condition_name': 'weight', 'icd9_codes_with_prefix': None, 'icd10_codes_with_prefix': None, 'icd10cm_label': None,
+    'icdO_codes_with_prefix': None, 'mondo_label': None, 'mondo_codes_with_prefix': None, 'hpo_label': None,
+    'hpo_codes_with_prefix': None, 'loinc_code': 'LOINC:29463-7', 'loinc_label': 'Body weight'}
+])
+
+all_an = pd.concat([df_explode, additions], ignore_index=True)
+
+all_an.to_csv(new_file_path, index=False)
 
 logger.info(df_explode)
