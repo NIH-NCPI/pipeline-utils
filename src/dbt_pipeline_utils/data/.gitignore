@@ -1,0 +1,4 @@
+# Will automatically ignore any dirs not specified below
+*
+
+!.gitignore

@@ -41,7 +41,7 @@ def generate_ftd_model_docs(df_obj):
 
     df_obj.generate_ftd_dbt_project_yaml()
     
-    df_obj.generate_column_descriptions(column_data,df_obj.paths["dbtp_ftdc_study_docs_dir"],ftd_model=True,)
+    df_obj.generate_column_descriptions(column_data,df_obj.paths["dbtp_ftdc_study_docs_dir"],ftd_model=True)
 
 def generate_tgt_model_docs(df_obj):
     """The tgt model should only need to be generated once, and then small tweaks made."""

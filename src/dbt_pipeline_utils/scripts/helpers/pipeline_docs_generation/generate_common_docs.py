@@ -1,5 +1,6 @@
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.general import *
+from dbt_pipeline_utils.scripts.helpers.pipeline_docs_generation.model_tests import format_tests
 import re
 
 class DocGeneration():
@@ -11,19 +12,44 @@ class DocGeneration():
         """
 
         column_map = DD_FORMATS[dd_format]  # Define dd column expectations
-        
-        column_data_list = [
-            (
-                row[column_map["variable_name"]],
-                row[column_map["formatted_variable_name"]].lower().replace(" ", "_"),
-                row.get(column_map["description"]),
-                row.get(column_map["data_type"]),
-                row.get(column_map["enumerations"]),
-                row.get(column_map["comment"]),
-                row.get(column_map["src_variable_name"]),
-            )
-            for _, row in df.iterrows()
-        ]
+        column_data_list = []
+
+        for idx, row in df.iterrows():
+            try:
+                # variable_name (required — if NaN, fallback to 'unknown')
+                variable_name = row.get(column_map["variable_name"]) or None
+                formatted_variable_name = (
+                        str(variable_name).lower().replace(" ", "_").replace(",", "_").replace("-", "_")
+                    ) or None
+
+
+                description = row.get(column_map["description"]) or None
+
+                data_type = row.get(column_map["data_type"])
+                if pd.isna(data_type):
+                    data_type = "string"
+
+                enumerations = row.get(column_map["enumerations"]) or None
+                comment = row.get(column_map["comment"]) or None
+                src_variable_name = row.get(column_map["src_variable_name"]) or None
+                tests = row.get(column_map["tests"]) or None
+
+
+                column_data_list.append((
+                    variable_name,
+                    formatted_variable_name,
+                    description,
+                    data_type,
+                    enumerations,
+                    comment,
+                    src_variable_name,
+                    tests
+                ))
+
+            except Exception as e:
+                print(f"Error at row {idx}: {e}")
+                print(f"Row content: {row}")
+                raise
 
         return column_data_list
     
@@ -116,8 +142,10 @@ class DocGeneration():
                         "name": col_name_code,
                         "description": f'{{{{ doc("{table_name}_{col_name_code}") }}}}',
                         "data_type": col_data_type,
+                        **({"tests": format_tests(tests,enums)} if tests is not None else {}),
+
                     }
-                    for col_name, col_name_code, _, col_data_type, _, _, _ in column_data.get(
+                    for col_name, col_name_code, _, col_data_type, enums, _, _, tests in column_data.get(
                         table_name, []
                     )
                 ]
@@ -158,7 +186,7 @@ class DocGeneration():
                     "description": f'{{{{ doc("{src_filename}_{col_name_code}") }}}}'
                 }
 
-                for col_name, col_name_code, _, _, _, _, _ in column_data.get(f"{src_filename}", [])
+                for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
             ]
 
 
@@ -222,7 +250,7 @@ class DocGeneration():
                     new_descriptions.append(table_desc_block)
                     existing_col_doc_ids.add(table_desc_id)
 
-                for col_name, col_name_code, col_description, _, _, _, _ in column_data.get(table_key, []):
+                for col_name, col_name_code, col_description, _, _, _, _, _  in column_data.get(table_key, []):
                     col_doc_id = f"{table_key}_{col_name_code}"
                     col_desc_block = f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}\n"
 
@@ -275,7 +303,7 @@ class DocGeneration():
     def generate_src_sql_files(self, output_dir):
         """Generates SQL files dynamically for each table in its respective directory."""
 
-        if self.import_type != 'duckdb':
+        if self.table_info['import_type'] != 'duckdb':
 
             for table_id in self.data_dictionary.keys():
                 src_table_id = self.get_src_table_key(table_id)
@@ -298,7 +326,7 @@ class DocGeneration():
 
             column_definitions = []
             id_list = []
-            for col_name, column_name_code, _, col_data_type, _, _, _ in column_data.get(src_table, []):
+            for col_name, column_name_code, _, col_data_type, _, _, _, _  in column_data.get(src_table, []):
                 if column_name_code.endswith("_id"):
                     id_list.append(column_name_code) 
                 sql_type = type_mapping.get(col_data_type, "text")
@@ -313,9 +341,9 @@ class DocGeneration():
     )
 
     select 
-        *,
-        concat('{id_list[0]}','-','{id_list[1]}') as ftd_key
-    from source
+        ROW_NUMBER() OVER () AS ftd_index
+        ,source.*
+        from source
     """
 
             # Write SQL file to the correct directory
@@ -327,7 +355,7 @@ class DocGeneration():
         open the src dd and apply minimal transformations"""
 
         for table_id, table_info in self.data_dictionary.items():
-            src_table_key = f"{self.study_id}_src_{table_id}"
+            src_table_key = self.get_src_table_key(table_id)
             src_dd_path = self.paths["src_data_dir"]
             filepath = src_dd_path / f"{table_id}_stg_dd.csv"
 
@@ -341,7 +369,7 @@ class DocGeneration():
 
             column_mapping = {
                 col_name: column_name_code
-                for col_name, column_name_code, _, _, _ in column_data.get(src_table_key, [])
+                for col_name, column_name_code, _, _, _, _, _, _ in column_data.get(src_table_key, [])
             }
 
             format_type = table_info.get("format")
@@ -367,7 +395,7 @@ class DocGeneration():
             t_path = src_dd_path / Path(f"ftd_transformations/{table_id}_stg_additions_dd.csv")
             if t_path.exists():  
                 transformations = read_file(t_path)
-                stg_df = pd.concat([stg_df, transformations], ignore_index=True)
+                stg_df = pd.concat([stg_df, transformations])
             else:
                 pass
 
