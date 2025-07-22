@@ -8,33 +8,6 @@ class RunScriptClass():
         """Generates a dbt run command for models or macros with optional arguments."""
         
         if operation == 'macro':
-            if args:
-                args_parts = ["--args '{"] + [f'"{k}": "{v}"' for k, v in args.items()] + ["}'"]
-                all_args = " ".join(args_parts)
-            else:
-                all_args = ""
-            
-            op = f'dbt run-operation {model} {all_args}'.strip()
-        
-        elif operation == 'model':
-            if args:
-                args_parts = ['--vars "{'] + [f'{k}: {v}' for k, v in args.items()] + ['}"']
-                all_args = " ".join(args_parts)
-            else:
-                all_args = ""
-            
-            op = f'dbt run --select {model} {all_args}'.strip()
-
-        else:
-            raise ValueError("Invalid operation type. Use 'macro' or 'model'.")
-        
-        return op
-
-
-    def generate_run_command(self, operation, model, args=None):
-        """Generates a dbt run command for models or macros with optional arguments."""
-        
-        if operation == 'macro':
             all_args = f"--args '{' '.join(f'\"{k}\": \"{v}\"' for k, v in args.items())}'" if args else ""
             op = f'dbt run-operation {model} {all_args}'.strip()
         
@@ -64,13 +37,17 @@ class RunScriptClass():
 
 
         tgt_tables = {}
+        test_tables = []
         for table_id, table_info in self.ftd_dd.items():
-           tgt_tables[f"{table_id}"]= {"source_table": f"{self.study_id}_ftd_{table_id}", "target_schema": f"{self.study_id}_tgt_data"}
-
+           src_table = f"{self.study_id}_ftd_{table_id}"
+           tgt_tables[f"{table_id}"]= {"source_table": src_table, "target_schema": f"{self.study_id}_tgt_data"}
+           test_tables.append(src_table)
 
         for table, args in tgt_tables.items():
             commands_list.append(self.generate_run_command("model", f"tgt_{table}", args))
 
+        for table in test_tables:
+            commands_list.append(f"dbt test --select {table}")
         # Final script content
         data = "\n".join(commands_list) + "\n"
         filepath = scripts_dir / f"run_{study_id}.sh"

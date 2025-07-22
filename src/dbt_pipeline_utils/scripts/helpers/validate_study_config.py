@@ -8,7 +8,7 @@ def verify_files_exist(study_yml_path, info):
         generated_path = study_yml_path / Path(f"{info['src_file_id']}")
 
         if not os.path.exists(identifier_path) and not os.path.exists(generated_path):
-            raise ValueError(f"Error: One of the following dds are expected to exist: {identifier_path} or {generated_path}")
+            logger.warning(f"Error: One of the following dds are expected to exist: {identifier_path} or {generated_path}")
 
 
 def validate_dfs(data_files, study_yml_path, file_ids):

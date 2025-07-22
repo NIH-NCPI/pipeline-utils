@@ -1,5 +1,6 @@
 import os
 import yaml
+import re
 import pandas as pd
 import dbt_pipeline_utils
 from pathlib import Path
@@ -207,3 +208,11 @@ def copy_directory(src_dir, dest_dir):
             write_file(target, data)        
             
             logger.debug(f"Copied '{src_dir}' to '{dest_dir}'")
+
+def generate_doc_block_name(table_name, column_name):
+    '''
+    Ensures dbt doc block names consist of only letters, numbers and underscores, as dbt expects.
+   '''
+    name = f'{table_name}_{column_name}'
+    return re.sub(r'[^a-zA-Z0-9_]', '_', name)
+

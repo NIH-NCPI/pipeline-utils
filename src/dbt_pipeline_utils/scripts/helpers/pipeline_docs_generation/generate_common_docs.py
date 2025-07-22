@@ -140,7 +140,7 @@ class DocGeneration():
                 columns_metadata = [
                     {
                         "name": col_name_code,
-                        "description": f'{{{{ doc("{table_name}_{col_name_code}") }}}}',
+                        "description": f'{{{{ doc(f"{generate_doc_block_name(table_name, col_name_code)}") }}}}',
                         "data_type": col_data_type,
                         **({"tests": format_tests(tests,enums)} if tests is not None else {}),
 
@@ -183,7 +183,7 @@ class DocGeneration():
             columns_metadata = [
                 {
                     "name": col_name,
-                    "description": f'{{{{ doc("{src_filename}_{col_name_code}") }}}}'
+                    "description": f'{{{{ doc(f"{generate_doc_block_name(src_filename, col_name_code)}") }}}}'
                 }
 
                 for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
@@ -251,7 +251,7 @@ class DocGeneration():
                     existing_col_doc_ids.add(table_desc_id)
 
                 for col_name, col_name_code, col_description, _, _, _, _, _  in column_data.get(table_key, []):
-                    col_doc_id = f"{table_key}_{col_name_code}"
+                    col_doc_id = generate_doc_block_name(table_key, col_name_code)
                     col_desc_block = f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}\n"
 
                     if col_doc_id not in existing_col_doc_ids:

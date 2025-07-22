@@ -2,6 +2,9 @@
 def normalize_varnames(varnames):
     return varnames.lower().replace(" ", "_").replace(",", "_").replace("-", "_")
 
+def add_prefix_to_list(codes, prefix):
+    return [f"{prefix}{code}" for code in codes if code]
+
 def explode_rows_on_col_value(df,col,delimiter):
     '''
     Creates a new row for every item in a cell, split by the delimeter.
