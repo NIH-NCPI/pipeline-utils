@@ -183,7 +183,7 @@ class DocGeneration():
             columns_metadata = [
                 {
                     "name": col_name,
-                    "description": f'{{{{ doc(f"{generate_doc_block_name(src_filename, col_name_code)}") }}}}'
+                    "description": f'{{{{ doc("{generate_doc_block_name(src_filename, col_name_code)}") }}}}'
                 }
 
                 for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
