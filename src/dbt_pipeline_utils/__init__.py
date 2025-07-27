@@ -1,19 +1,32 @@
 import logging
-import sys
+class CustomFormatter(logging.Formatter):
+    RESET = "\033[0m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+    BOLD_RED = "\033[1;31m"
+    BLUE = "\033[34m"
+    GREEN = "\033[32m"
 
-# Define log format
-LOG_FORMAT = "%(levelname)s - %(message)s"
+    FORMATS = {
+        logging.DEBUG: GREEN + "%(levelname)s: %(message)s" + RESET,
+        logging.INFO: RESET + "%(levelname)s: %(message)s" + RESET,
+        logging.WARNING: BLUE + "%(levelname)s: %(message)s" + RESET,
+        logging.ERROR: RED + "%(levelname)s: %(message)s" + RESET,
+        logging.CRITICAL: BOLD_RED + "%(levelname)s: %(message)s" + RESET,
+    }
 
-# Configure logging once when the package is imported
-logging.basicConfig(
-    level=logging.INFO,  # Default level
-    format=LOG_FORMAT,
-    handlers=[
-        logging.StreamHandler(sys.stdout),  # Print to console
-        # logging.FileHandler("pipeline.log")  # Log to file
-    ]
-)
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno, self.RESET + "%(message)s" + self.RESET)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
 
-# Create a default logger for the package
-logger = logging.getLogger("dbt_pipeline_utils")
-logger.debug("Logging is set up.")
+
+logger = logging.getLogger("my_logger")
+logger.setLevel(logging.INFO)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+console_handler.setFormatter(CustomFormatter())
+
+logger.addHandler(console_handler)
