@@ -9,11 +9,14 @@ from dbt_pipeline_utils.scripts.helpers.general import *
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils import logger
 
-
 def clean_codes(codes):
+    codes = codes.replace('HP','|HP')
+    codes = codes.replace('HP','HP:')
+    codes = codes.replace('HP::','HP:')
     codes = codes.replace(' ', '')  
     codes = codes.replace("''", '')  
-    codes = codes.replace('"', '')  
+    codes = codes.replace('"', '') 
+    codes = codes.replace('|||', '|') 
     codes = codes.replace('||', '|')  
     codes = codes.replace("|'","'").replace("'|","'")  
     codes = codes.replace("| ","|").replace(" |","|").replace(" '","'").replace("' ","'") 
