@@ -1,8 +1,7 @@
 """
-Get metadata for a code using the search_dragon functions.
+Get metadata for a code using the search_dragon.
 
-Params Example: -ak 'HP:0000828' -o "HPO, HP" -a 'ols,umls' -f 'annotations.csv'
-python src/dbt_pipeline_utils/scripts/code_api_search.py -ak 'HP:0000828' -o "HPO, HP" -a 'ols,umls' -f 'annotations3.csv'
+python src/dbt_pipeline_utils/scripts/code_api_search.py -ak 'HP:0000828|HP:0000828' -o "HPO, HP" -f 'annotations3.csv'
 """
 
 import argparse
