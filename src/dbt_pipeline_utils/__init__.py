@@ -1,32 +1,11 @@
+from search_dragon import logger as getlogger
 import logging
-class CustomFormatter(logging.Formatter):
-    RESET = "\033[0m"
-    YELLOW = "\033[33m"
-    RED = "\033[31m"
-    BOLD_RED = "\033[1;31m"
-    BLUE = "\033[34m"
-    GREEN = "\033[32m"
+from os import getenv
 
-    FORMATS = {
-        logging.DEBUG: GREEN + "%(levelname)s: %(message)s" + RESET,
-        logging.INFO: RESET + "%(levelname)s: %(message)s" + RESET,
-        logging.WARNING: BLUE + "%(levelname)s: %(message)s" + RESET,
-        logging.ERROR: RED + "%(levelname)s: %(message)s" + RESET,
-        logging.CRITICAL: BOLD_RED + "%(levelname)s: %(message)s" + RESET,
-    }
+# Set the logging config
+LOGGING_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno, self.RESET + "%(message)s" + self.RESET)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-
-logger = logging.getLogger("my_logger")
-logger.setLevel(logging.INFO)
-
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-console_handler.setFormatter(CustomFormatter())
-
-logger.addHandler(console_handler)
+# Create a logger
+llevel = getenv("LOCUTUS_LOGLEVEL", logging.WARN)
+logger = getlogger(logformat=LOGGING_FORMAT, loglevel=llevel)
+logger.info(f"Logger instanced with level: {llevel}")

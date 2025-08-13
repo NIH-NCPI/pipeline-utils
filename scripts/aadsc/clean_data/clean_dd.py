@@ -1,11 +1,11 @@
-import pandas as pd
+#! /usr/bin/env python
 
+import pandas as pd
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils import logger
 
-
-input_dd_path = "data/input/chicoine_down_syndrome_extract_dd.csv"
-df_path = "data/input/chicoine_down_syndrome_extract.csv"
+input_dd_path = "data/input/aadsc/chicoine_down_syndrome_extract_dd.csv"
+df_path = "data/input/aadsc/chicoine_down_syndrome_extract.csv"
 column_map = DD_FORMATS['pipeline_format'] 
 
 def normalize_varnames(varnames):
@@ -34,6 +34,21 @@ mapping = {
 }
 for key, value in mapping.items():
     ori_desc.loc[ori_desc['merge_col'] == key, 'merge_col'] = value
+
+# mapping = {
+#     'age_at_last_encounter': 'age',
+#     'change_in_skin_texture_': 'change_in_skin_texture',
+#     'disorder_ofadrenalgland,_unspecified': 'disorder_of_adrenal_gland-unspecified',
+#     'date_of_extraction': 'extraction_date',
+#     'height_at_last_encounter': 'height',
+#     'nonalcoholicsteatohepatitis': 'nonalcoholic_steatohepatitis',
+#     'unspecified_blepharitis_unspecified_eye,_unspecified_eyelid': 'unspecified_blepharitis_unspecified_eye-_unspecified_eyelid',
+#     'vitaminb12deficiency': 'vitamin_b12_deficiency',
+#     'xerosis_cutis_': 'xerosis_cutis',
+#     'weight_at_last_encounter': 'weight'
+# }
+# for key, value in mapping.items():
+#     ori_desc.loc[ori_desc['merge_col'] == key, 'merge_col'] = value
 
 
 # import the data file column names
@@ -99,6 +114,5 @@ clean_df = clean_df.set_index('variable_name')
 clean_df = clean_df.loc[original_order]      
 
 clean_df.to_csv("data/output/new_dd.csv")
-
 
 print(f'sanity check - counts original_df_cols:{len(cols_df)} new_df_cols:{len(clean_df)}')

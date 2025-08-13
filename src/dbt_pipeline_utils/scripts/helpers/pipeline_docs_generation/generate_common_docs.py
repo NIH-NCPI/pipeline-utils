@@ -5,7 +5,7 @@ import re
 
 class DocGeneration():
     """Base class for defining pipeline stages."""
-    
+
     def extract_columns(self, df, dd_format):
         """
         Extracts relevant column information based on the dictionary format.
@@ -22,7 +22,6 @@ class DocGeneration():
                         str(variable_name).lower().replace(" ", "_").replace(",", "_").replace("-", "_")
                     ) or None
 
-
                 description = row.get(column_map["description"]) or None
 
                 data_type = row.get(column_map["data_type"])
@@ -33,7 +32,6 @@ class DocGeneration():
                 comment = row.get(column_map["comment"]) or None
                 src_variable_name = row.get(column_map["src_variable_name"]) or None
                 tests = row.get(column_map["tests"]) or None
-
 
                 column_data_list.append((
                     variable_name,
@@ -52,7 +50,7 @@ class DocGeneration():
                 raise
 
         return column_data_list
-    
+
     def load_src_column_data(self, src_only=None):
         """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
         column_data = {}
@@ -80,7 +78,6 @@ class DocGeneration():
                 column_data[stg_table_key] = self.extract_columns(stg_df, "pipeline_format")
 
         return column_data
-
 
     def generate_dbt_project_yaml(self):
         study_info = {}
@@ -114,7 +111,6 @@ class DocGeneration():
         filepath = self.paths["dbtp_src_study_dir"] / "dbt_project.yml"
 
         write_file(filepath, dbt_config)
-
 
     def generate_dbt_models_yml(self, column_data, output_dir, ftd_model=None):
         """
@@ -189,7 +185,6 @@ class DocGeneration():
                 for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
             ]
 
-
             source_tables.append({
                 "name": src_filename,
                 "description": table_info.get("description", f"Source table for {src_filename}."),
@@ -209,7 +204,6 @@ class DocGeneration():
 
         filepath = output_dir / "sources.yml"
         write_file(filepath, sources_yaml, overwrite=True)
-
 
     def generate_column_descriptions(self, column_data, output_dir, ftd_model=None):
         """Generates a separate column_descriptions.md for each table in its respective docs directory."""
@@ -266,7 +260,6 @@ class DocGeneration():
         else:
             logger.debug(f"No updates needed: {filepath}")
 
-
     def generate_model_descriptions(self, output_dir):
         """Generates model_descriptions.md using the specified format."""
         model_descriptions = []
@@ -299,7 +292,6 @@ class DocGeneration():
 
                 write_file(filepath, data)
 
-
     def generate_src_sql_files(self, output_dir):
         """Generates SQL files dynamically for each table in its respective directory."""
 
@@ -309,12 +301,11 @@ class DocGeneration():
                 src_table_id = self.get_src_table_key(table_id)
                 sql_content = f"""{{{{ config(materialized='table') }}}}
 
-        select * from {self.src_schema}.{table_id}
-        """
+select * from {self.src_schema}.{table_id}
+"""
                 filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
                 write_file(filepath, sql_content, overwrite=True)
-        
 
     def generate_stg_sql_files(self, column_data, output_dir):
         """Generates staging SQL files dynamically for each table based on the data dictionary."""
@@ -334,21 +325,20 @@ class DocGeneration():
 
             sql_content = f"""{{{{ config(materialized='table') }}}}
 
-    with source as (
-        select 
-        {",\n       ".join(column_definitions)}
-        from {{{{ source('{self.study_id}','{src_table}') }}}}
-    )
-
+with source as (
     select 
-        ROW_NUMBER() OVER () AS ftd_index
-        ,source.*
-        from source
-    """
+      {",\n       ".join(column_definitions)}
+    from {{{{ source('{self.study_id}','{src_table}') }}}}
+)
+
+select 
+  ROW_NUMBER() OVER () AS ftd_index,
+  source.*
+from source
+"""
 
             # Write SQL file to the correct directory
             write_file(filepath, sql_content)
-
 
     def generate_stg_dds(self):
         """Generates staging SQL files dynamically for each table based on the data dictionary.
@@ -400,6 +390,3 @@ class DocGeneration():
                 pass
 
             write_file(filepath, stg_df)
-            
-
-

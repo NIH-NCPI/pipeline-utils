@@ -46,6 +46,16 @@ def generate_ftd_model_docs(df_obj):
 def generate_tgt_model_docs(df_obj):
     """The tgt model should only need to be generated once, and then small tweaks made."""
 
+    column_data = df_obj.load_ftd_column_data()
+
+    # If static tgt models don't exist, create them using the ftd dds
+    df_obj.create_new_tgt_models()
+
+    # If static tgt macros don't exist, create them using the ftd dds
+    df_obj.create_new_tgt_macros(column_data)
+
+    df_obj.generate_tgt_dbt_project_yaml()
+
     # copy over the tgt model
     df_obj.copy_directory()
 

@@ -6,18 +6,19 @@ class RunScriptClass():
 
     def generate_run_command(self, operation, model, args=None):
         """Generates a dbt run command for models or macros with optional arguments."""
-        
+
         if operation == 'macro':
             all_args = f"--args '{' '.join(f'\"{k}\": \"{v}\"' for k, v in args.items())}'" if args else ""
             op = f'dbt run-operation {model} {all_args}'.strip()
-        
-        elif operation == 'model':
+
+        if operation == "model":
             all_args = f"--vars '{json.dumps(args)}'" if args else ""
             op = f'dbt run --select +{model} {all_args}'.strip()
 
-        else:
-            raise ValueError("Invalid operation type. Use 'macro' or 'model'.")
-        
+        if operation == "test":
+            all_args = f"--vars '{json.dumps(args)}'" if args else ""
+            op = f"dbt test --select +{model} {all_args}".strip()
+
         return op
 
     def generate_dbt_run_script(self):
@@ -26,28 +27,36 @@ class RunScriptClass():
         scripts_dir = self.paths["dbtp_scripts_dir"]
 
         commands_list = [
-        "#!/bin/bash",
-        "set -e  # Exit on error",
-        "dbt clean",
-        'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
-    ]
+            "#!/bin/bash",
+            "dbt clean",
+            'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
+            "dbt seed #--full-refresh",
+        ]
 
         commands_list.append("# Run Target tables") 
 
-
-
         tgt_tables = {}
-        test_tables = []
+        all_tables = []
+
         for table_id, table_info in self.ftd_dd.items():
-           src_table = f"{self.study_id}_ftd_{table_id}"
-           tgt_tables[f"{table_id}"]= {"source_table": src_table, "target_schema": f"{self.study_id}_tgt_data"}
-           test_tables.append(src_table)
+            src_table = f"{self.study_id}_ftd_{table_id}"
+            tgt_tables[f"{table_id}"] = {
+                "source_table": src_table,
+                "target_schema": f"{self.study_id}_tgt_data",
+            }
+            all_tables.append(src_table)
+
+        for table in all_tables:
+            commands_list.append(self.generate_run_command("model", table))
+
+        for table in all_tables:
+            commands_list.append(self.generate_run_command("test", table))
 
         for table, args in tgt_tables.items():
-            commands_list.append(self.generate_run_command("model", f"tgt_{table}", args))
+            commands_list.append(
+                self.generate_run_command("model", f"tgt_{table}", args)
+            )
 
-        for table in test_tables:
-            commands_list.append(f"dbt test --select {table}")
         # Final script content
         data = "\n".join(commands_list) + "\n"
         filepath = scripts_dir / f"run_{study_id}.sh"

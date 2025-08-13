@@ -8,6 +8,7 @@ import argparse
 import csv
 from dbt_pipeline_utils.scripts.helpers.general import *
 from dbt_pipeline_utils.scripts.helpers.common import *
+from dbt_pipeline_utils import logger
 from search_dragon.search import run_search
 from pathlib import Path
 
@@ -31,6 +32,7 @@ def main(codes, ontologies, filepath, results_per_page, start_index):
     ontology_param = [c.strip() for c in ontologies.split(",")]
 
     for keyword in codes:
+        logger.info(f"Requesting: {keyword}")
         annotations[keyword]={}
 
         # TODO: Automate conversions.
@@ -48,13 +50,13 @@ def main(codes, ontologies, filepath, results_per_page, start_index):
         annotations[keyword]['ols2'] = run_search(onto_data, ols_keyword, ontology_param, ['ols2'], results_per_page, start_index)
         annotations[keyword]['umls'] = run_search(onto_data, umls_keyword, ontology_param, ['umls'], results_per_page, start_index)
 
-     # Format result and output to a CSV file
+    # Format result and output to a CSV file
     with open(filepath, mode="w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
 
         # Write header row (optional, depends on your data structure)
         writer.writerow(["api","searched_code","response_code","display","description","system","code_iri","ontology_prefix"])
-        
+
         for keyword, results in annotations.items():
             for source, result in results.items():
                 if result and result.get('results'):
@@ -70,6 +72,7 @@ def main(codes, ontologies, filepath, results_per_page, start_index):
                 else:
                     writer.writerow([source, keyword, "No results", "No results", "No results", "No results", "No results", "No results"])
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get metadata for a code using the available locutus OntologyAPI connection.")
     
@@ -78,6 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("-f","--filepath",required=False, default = 'annotations.csv', help="The output filename. Path from root.",)
     parser.add_argument("-r", "--results_per_page", required=False, default = 1, help="How many pages should the API return per request")
     parser.add_argument("-s", "--start_index", required=False, default = 1, help="Which page should be returned")
+    parser.add_argument("-i", "--input_type", required=False, default = 1, help="Which page should be returned")
 
     args = parser.parse_args()
 

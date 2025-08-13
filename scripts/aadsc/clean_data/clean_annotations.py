@@ -1,12 +1,13 @@
+#! /usr/bin/env python#!
+
 import pandas as pd
 
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils import logger
 
 
-ori_data_path = "data/input/annotations.csv"
-new_file_path = "data/output/annotations2.csv"
-
+ori_data_path = "data/input/aadsc/annotations.csv"
+new_file_path = "data/output/aadsc/annotations_cleaned_20250730.csv"
 
 def normalize_varnames(varname):
     name = str(varname).lower().replace(" ", "_").replace(",", "_").replace("-", "_")

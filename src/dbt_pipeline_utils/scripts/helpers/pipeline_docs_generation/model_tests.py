@@ -1,7 +1,7 @@
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.general import *
 
-    
+
 def format_tests(tests, enums=None):
     """
     Formats the tests string into dbt-compatible test definitions.
@@ -18,19 +18,23 @@ def format_tests(tests, enums=None):
 
     if enums:
         enums = [enum.strip() for enum in enums.split(";")]
-    
+
     formatted_tests = []
-    
+
     for test in test_list:
         test = test.strip() 
-        
+
         if test == "accepted_values" and enums:  
             formatted_tests.append({
                 "accepted_values": {
                     "values": enums
                 }
             })
+        # if enums:
+        #     formatted_tests.append(
+        #         {"not_accepted_partial_match": {"values": ["FTD_FLAG"]}}
+        #     )
         if test == "not_null":
             formatted_tests.append(test)
-    
+
     return formatted_tests

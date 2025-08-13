@@ -46,7 +46,6 @@ class FTDDocGenClass():
 
         write_file(filepath, dbt_config, overwrite=True)
 
-
     def generate_ftd_sql_files(self, column_data):
 
         src_table_columns = {
@@ -69,11 +68,10 @@ class FTDDocGenClass():
                     if src_var_name in cols:
                         alias = src_id
                         break
-                    
+
                 src_col=f'{alias}.{src_var_name}'
                 if "Foreign Key:" in comment or src_var_name == 'id':
-                    src_col=f"{{{{ generate_global_id(prefix='',descriptor=[''], study_id='{self.study_id}') }}}}"
-
+                    src_col = f"  {{{{ generate_global_id(prefix='',descriptor=[''], study_id='{self.study_id}') }}}}"
 
                 column_definitions.append(f'{src_col}::{sql_type} as "{f_col_name}"')
 
@@ -82,20 +80,14 @@ class FTDDocGenClass():
                 if src_id != base_table:
                     joins.append(f"join {{{{ ref('{self.study_id}_stg_{src_id}') }}}} as {src_id}\non {self.get_join_conditions(src_id)} ")
 
-            
             sql_content = f"""{{{{ config(materialized='table', schema='{self.study_id}_data') }}}}
 
-    with source as (
-        select 
-        {",\n       ".join(column_definitions)}
-        from {{{{ ref('{self.study_id}_stg_{base_table}') }}}} as {base_table}
-        {' '.join(joins)}
-    )
+select 
+{",\n  ".join(column_definitions)}
+from {{{{ ref('{self.study_id}_stg_{base_table}') }}}} as {base_table}
+{' '.join(joins)}
 
-    select 
-        * 
-    from source
-    """
+"""
 
             write_file(filepath, sql_content)
 
@@ -104,7 +96,7 @@ class FTDDocGenClass():
         trans_study_data_dir = self.paths["trans_study_data_dir"]
         ftd_study_dir_path = self.paths["ftd_study_data_dir"]
         ftd_yml_path = self.paths["ftd_study_yml_path"]
-        
+
         ftd_yml = read_file(ftd_yml_path)
         utils_ftd_dd = ftd_yml.get("data_dictionary", {})
         additions_temp_path = self.paths["static_data_dir"] / "additions_template.csv"
@@ -124,14 +116,13 @@ class FTDDocGenClass():
 
             utils_df["src_variable_name"] = utils_df.loc[:, utils_df.columns[0]]
 
-            # TODO clean/map dd cols. Currently overwriting a col name inconsistancy 
+            # TODO clean/map dd cols. Currently overwriting a col name inconsistancy
             utils_df['variable_description'] = utils_df.loc[:, utils_df.columns[1]]
 
             trans_path = trans_study_data_dir / f"{table_id}_stg_additions_dd.csv"
 
             write_file(filepath, utils_df)
             write_file(trans_path, temp)
-
 
     def load_ftd_column_data(self):
         """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
