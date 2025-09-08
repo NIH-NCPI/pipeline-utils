@@ -11,7 +11,7 @@ type_mapping = {
 DD_FORMATS = {
     "src_type1": {
         "variable_name": "Variable Name",
-        "formatted_variable_name": "Variable Name",
+        "formatted_variable_name": "Variable Name", # Utils generated, for stg dds. Not from data source.
         "description": "Description",
         "data_type": None, 
         "min": None,
@@ -19,7 +19,7 @@ DD_FORMATS = {
         "units": None,
         "enumerations": None,
         "comment": None,
-        "src_variable_name": "src_variable_name",  # Generated, for stg dds
+        "src_variable_name": "src_variable_name",  # Utils generated, for stg dds. Not from data source.
     },
     # Generated/intermediate pipeline dds, will follow the same format (pipeline_format)
     "pipeline_format": {

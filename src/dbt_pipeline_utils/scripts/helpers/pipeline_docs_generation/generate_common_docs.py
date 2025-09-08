@@ -138,7 +138,7 @@ class DocGeneration():
                         "name": col_name_code,
                         "description": f'{{{{ doc("{generate_doc_block_name(table_name, col_name_code)}") }}}}',
                         "data_type": col_data_type,
-                        **({"tests": format_tests(tests,enums)} if tests is not None else {}),
+                        **({"tests": format_tests(tests, col_name_code, enums)} if tests is not None else {}),
 
                     }
                     for col_name, col_name_code, _, col_data_type, enums, _, _, tests in column_data.get(
