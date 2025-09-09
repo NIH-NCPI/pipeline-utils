@@ -72,6 +72,7 @@ class TgtDocGenClass():
             sql_content = f"""{{% macro {new_macro}(source_table) %}}
 
 select 
+distinct
 {",\n".join(column_definitions)}
 from {{{{ ref(source_table) }}}}
 {{%- endmacro -%}}
