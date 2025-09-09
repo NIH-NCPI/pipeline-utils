@@ -2,7 +2,7 @@ from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.general import *
 
 
-def format_tests(tests, enums=None):
+def format_tests(tests, col, enums=None):
     """
     Formats the tests string into dbt-compatible test definitions.
 
@@ -20,11 +20,21 @@ def format_tests(tests, enums=None):
         enums = [enum.strip() for enum in enums.split(";")]
 
     formatted_tests = []
+    is_required = "not_null" in test_list
 
     for test in test_list:
         test = test.strip() 
 
-        if test == "accepted_values" and enums:  
+        if test == "accepted_values" and enums and not is_required:
+            formatted_tests.append(
+                {
+                    "accepted_values": {
+                        "values": enums,
+                        "config": {"where": f"{col} is not null"},
+                    }
+                }
+            )
+        if test == "accepted_values" and enums and is_required:
             formatted_tests.append({
                 "accepted_values": {
                     "values": enums

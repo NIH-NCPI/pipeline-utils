@@ -69,9 +69,10 @@ class TgtDocGenClass():
 
                 column_definitions.append(f'  {f_col_name}::{sql_type} as "{tgt_name}"')
 
-            sql_content = f"""{{{{% macro {new_macro}(source_table) %}}}}
+            sql_content = f"""{{% macro {new_macro}(source_table) %}}
 
 select 
+distinct
 {",\n".join(column_definitions)}
 from {{{{ ref(source_table) }}}}
 {{%- endmacro -%}}
