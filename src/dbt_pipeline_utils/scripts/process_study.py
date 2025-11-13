@@ -1,16 +1,34 @@
 import argparse
-
 from dbt_pipeline_utils.scripts.helpers.general import *
-# from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.validate_study_config import *
 from dbt_pipeline_utils.scripts.helpers.factory_functions import *
 from dbt_pipeline_utils import logger
 
 
-def main(study_id, src_data_path):
+def main():
+    parser = argparse.ArgumentParser(
+        description="Initialize DBT transformation for study data."
+    )
+
+    parser.add_argument(
+        "-s",
+        "--study_id",
+        required=True,
+        help="Path to the YAML study_configuration file",
+    )
+
+    parser.add_argument(
+        "-f",
+        "--filepath",
+        required=False,
+        help="Path to the directory containing src data files. If not set, defaults to the {dbt project}/data path",
+    )
+
+    args = parser.parse_args()
+    study_id = args.study_id
 
     # Set paths
-    paths = get_paths(study_id, src_data_path)
+    paths = get_paths(study_id, args.filepath)
 
     study_config = read_file(paths["study_yml_path"])
     ftd_config = read_file(paths["ftd_study_yml_path"])
@@ -66,22 +84,4 @@ def main(study_id, src_data_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Initialize DBT transformation for study data.")
-
-    parser.add_argument(
-        "-s",
-        "--study_id",
-        required=True,
-        help="Path to the YAML study_configuration file",
-    )
-
-    parser.add_argument(
-        "-f",
-        "--filepath",
-        required=False,
-        help="Path to the directory containing src data files. If not set, defaults to the {dbt project}/data path",
-    )
-
-    args = parser.parse_args()
-
-    main(study_id=args.study_id, src_data_path=args.filepath)
+    main()

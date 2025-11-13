@@ -5,12 +5,12 @@ import subprocess
 import json
 
 class DuckDBFileProcessor(DatabaseBC):
-    def __init__(self, study_config, ftd_config, table_name, table_info, paths):
-        super().__init__(study_config, ftd_config, table_name, table_info, paths)
+    def __init__(self, study_config, ftd_config, table_name, table_info, paths, file):
+        super().__init__(study_config, ftd_config, table_name, table_info, paths, file)
 
         self.profile = self.pipeline_db
         self.src_schema = 'main'
-        self.src_data_csv = self.table_info['identifier'] # Identifies the csv file containing data to be imported.
+        self.src_data_csv = self.file # Identifies the csv file containing data to be imported.
 
     def import_data(self):
         """

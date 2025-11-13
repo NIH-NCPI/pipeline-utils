@@ -175,35 +175,36 @@ class DocGeneration():
         source_tables = []
 
         for table_id, table_info in self.data_files.items():
-            src_filename = Path(table_info['identifier']).stem
-            columns_metadata = [
-                {
-                    "name": col_name,
-                    "description": f'{{{{ doc("{generate_doc_block_name(src_filename, col_name_code)}") }}}}'
-                }
+            for file in table_info.get("identifier"):
+                src_filename = Path(file).stem
+                columns_metadata = [
+                    {
+                        "name": col_name,
+                        "description": f'{{{{ doc("{generate_doc_block_name(src_filename, col_name_code)}") }}}}'
+                    }
 
-                for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
-            ]
+                    for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
+                ]
 
-            source_tables.append({
-                "name": src_filename,
-                "description": table_info.get("description", f"Source table for {src_filename}."),
-                "columns": columns_metadata
-            })
+                source_tables.append({
+                    "name": src_filename,
+                    "description": table_info.get("description", f"Source table for {src_filename}."),
+                    "columns": columns_metadata
+                })
 
-        sources_yaml = {
-            "version": 2,
-            "sources": [
-                {
-                    "name": self.study_id,
-                    "schema": self.src_schema,
-                    "tables": source_tables
-                }
-            ]
-        }
+            sources_yaml = {
+                "version": 2,
+                "sources": [
+                    {
+                        "name": self.study_id,
+                        "schema": self.src_schema,
+                        "tables": source_tables
+                    }
+                ]
+            }
 
-        filepath = output_dir / "sources.yml"
-        write_file(filepath, sources_yaml, overwrite=True)
+            filepath = output_dir / "sources.yml"
+            write_file(filepath, sources_yaml, overwrite=True)
 
     def generate_column_descriptions(self, column_data, output_dir, ftd_model=None):
         """Generates a separate column_descriptions.md for each table in its respective docs directory."""
