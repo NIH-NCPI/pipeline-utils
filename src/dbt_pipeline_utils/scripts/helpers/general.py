@@ -82,7 +82,7 @@ def get_paths(study_id='placeholder', project_id='placeholder', tgt_model_id='pl
     # dbt project paths
     dbtp_root_dir = Path.cwd()
     profiles_path_root = dbtp_root_dir / "profiles.yml"
-    dbtp_p_dir = dbtp_root_dir / Path(project_id)
+    dbtp_p_dir = dbtp_root_dir / project_id
     dbtp_catalog_dir = dbtp_p_dir / Path("catalog")
     dbtp_scripts_dir = dbtp_p_dir / Path("scripts")
     dbtp_sources_dir = dbtp_p_dir / Path("catalog/sources")

@@ -48,8 +48,12 @@ def generate_ftd_study_yaml(paths, project_id):
 def main():
 
     parser = argparse.ArgumentParser(description="Initialize DBT transformation for study data.")
-
-    parser.add_argument("-y", "--yaml", required=True, help="Path to the YAML study_configuration file")
+    parser.add_argument(
+        "-s",
+        "--study_id",
+        required=True,
+        help="The study's readable identifier. Pipeline use only.",
+    )
 
     parser.add_argument("-p", "--project_id", required=True, help="The project associated with the study")
 
@@ -96,9 +100,7 @@ def main():
     src_df_objs = []
 
     for table_name, table_info in study_config["data_files"].items():
-        # import pdb
 
-        # pdb.set_trace()
         for file in table_info.get("identifier"):
             logger.debug(f"Processing data_files: {table_name}")
             processor = file_setup(

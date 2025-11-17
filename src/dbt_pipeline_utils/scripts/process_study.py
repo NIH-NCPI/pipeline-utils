@@ -9,14 +9,21 @@ def main():
     parser = argparse.ArgumentParser(
         description="Initialize DBT transformation for study data."
     )
-
     parser.add_argument(
         "-s",
         "--study_id",
         required=True,
-        help="Path to the YAML study_configuration file",
+        help="The study's readable identifier. Pipeline use only.",
     )
 
+    parser.add_argument(
+        "-p",
+        "--project_id",
+        required=True,
+        help="The project associated with the study",
+    )
+
+    parser.add_argument("-t", "--tgt_id", required=True, help="The tgt model ")
     parser.add_argument(
         "-f",
         "--filepath",
@@ -28,7 +35,7 @@ def main():
     study_id = args.study_id
 
     # Set paths
-    paths = get_paths(study_id, args.filepath)
+    paths = get_paths(study_id, args.project_id, args.tgt_id, args.filepath)
 
     study_config = read_file(paths["study_yml_path"])
     ftd_config = read_file(paths["ftd_study_yml_path"])
@@ -57,14 +64,18 @@ def main():
     for table_name, table_info in study_config["data_files"].items():
         # generate hard copies of syn dd's prior to study_config validation
 
-        df_study_info = study_info.copy()
-        df_study_info.update({"table_name": table_name})
+        for file in table_info.get("identifier"):
 
-        logger.debug(f"Processing data_dictionaries: {table_name}")
-        processor = file_setup(study_config, ftd_config, table_name, table_info, paths)
+            df_study_info = study_info.copy()
+            df_study_info.update({"table_name": table_name})
 
-        if processor:
-            src_df_objs.append(processor)
+            logger.debug(f"Processing data_dictionaries: {table_name}")
+            processor = file_setup(
+                study_config, ftd_config, table_name, table_info, paths
+            )
+
+            if processor:
+                src_df_objs.append(processor)
 
     logger.debug(f"Start validation of {study_id} config")
     validate_study_config(study_config, paths["src_data_dir"])
@@ -76,7 +87,6 @@ def main():
         dd.generate_new_table()
 
     for dfile in src_df_objs:
-
         logger.debug(f"Importing src data into the pipeline db")
         dfile.import_data()
 

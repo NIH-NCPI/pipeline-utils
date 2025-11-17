@@ -28,5 +28,5 @@ version_file = "src/locutus_util/_version.py"
 where = ["src"]  # list of folders that contain the packages (["."] by default)
 
 [project.scripts]
-generate_docs = "dbt_pipeline_utils.scripts.generate_docs:main"
-import_data = "dbt_pipeline_utils.scripts.process_study:main"
+generate_model_docs = "dbt_pipeline_utils.scripts.generate_docs:main"
+import_csv_data = "dbt_pipeline_utils.scripts.process_study:main"
