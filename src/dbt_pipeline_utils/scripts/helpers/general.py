@@ -68,9 +68,9 @@ def write_file(filename, data, overwrite=False):
     logger.debug(f"Generated: {Path(filename).name}")
 
 
-def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
+def get_paths(study_id='placeholder', project_id='placeholder', tgt_model_id='placeholder', src_data_path=None):
     """
-    For automatic validation of dir path creation, end the dir variables with "dir"
+    For automatic validation of dir path creation, end the dir variables with "dir"    
     """
     # dbt profiles path
 
@@ -80,10 +80,9 @@ def get_paths(study_id, project_id, tgt_model_id=None, src_data_path=None):
     utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
 
     # dbt project paths
-
     dbtp_root_dir = Path.cwd()
     profiles_path_root = dbtp_root_dir / "profiles.yml"
-    dbtp_p_dir = dbtp_root_dir / Path(f"{project_id}")
+    dbtp_p_dir = dbtp_root_dir / project_id
     dbtp_catalog_dir = dbtp_p_dir / Path("catalog")
     dbtp_scripts_dir = dbtp_p_dir / Path("scripts")
     dbtp_sources_dir = dbtp_p_dir / Path("catalog/sources")

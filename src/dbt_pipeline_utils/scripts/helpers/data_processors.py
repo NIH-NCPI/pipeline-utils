@@ -12,13 +12,14 @@ from dbt_pipeline_utils.scripts.helpers.pipeline_docs_generation.generate_model_
 class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptClass):
     """Base class to define common methods for file processing."""
 
-    def __init__(self, study_config, ftd_config, table_name, table_info, paths):
+    def __init__(self, study_config, ftd_config, table_name, table_info, paths, file):
         self.study_config = study_config
         self.ftd_config = ftd_config
         self.table_name = table_name
         self.table_info = table_info
         self.paths = paths
         self.profiles_path = paths.get("profiles_path_home")
+        self.file = file
         self.profile = ""
         self.src_schema = ""
         self.src_data_csv =  ""
@@ -59,8 +60,8 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
         The filename that is stored with column data. 
         '''
         datafile_info = self.data_files.get(table_id, {})
-        return Path(datafile_info.get("identifier")).stem
 
+        return Path(datafile_info.get("identifier")[0]).stem #
 
     def get_db_vars(self):
         """Loads specific key-value pairs from a YAML file based on the profile type."""
@@ -125,7 +126,6 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
 
         except Exception as ex:
             logger.exception("❌ Unexpected error during import:")
-        
 
     def import_data(self):
 
@@ -175,10 +175,9 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
 
         return column_definitions, self.src_data_csv
 
-
     def get_src_ddict_path(self, table_info):
         src_dd_path = self.paths['src_data_dir']
-        
+
         if table_info.get("import_type") == 'synapse':
             ddict = table_info.get("src_file_id")
 
@@ -190,9 +189,9 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
 
         if table_info.get("import_type") not in ['pg', 'duckdb', 'synapse']:
             logger.error(f"{table_info.get('import_type')} is not valid")
-            
+
         return src_dd_path / Path(f"{ddict}"), ddict
-    
+
     def get_join_conditions(self, current_table):
 
         join_cols = self.data_files.get(current_table, {}).get("join_cols", {})
@@ -204,6 +203,5 @@ class DatabaseBC(ABC, DocGeneration, FTDDocGenClass, TgtDocGenClass, RunScriptCl
             if right_column:
                 # join_table.right_column = current_table.left_column
                 return f"{join_table}.{right_column} = {current_table}.{left_column}"
-                
 
         return ''

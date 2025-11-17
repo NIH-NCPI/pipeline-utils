@@ -45,70 +45,15 @@ def generate_ftd_study_yaml(paths, project_id):
     write_file(paths['ftd_study_yml_path'], dbt_config, overwrite=True)
 
 
-def main(study_id, project_id, tgt_id, src_data_path):
+def main():
 
-    logger.info(f'Generating the {project_id} {study_id} dbt pipeline...')
-    # Set paths
-    paths = get_paths(study_id, project_id, tgt_id, src_data_path)
-    # If project dirs don't exist create them. 
-    # Will create the project/study models in the dir that the script is triggered to run in.
-    for var, path in paths.items():
-        if var.endswith("dir"):
-            path.mkdir(parents=True, exist_ok=True)
-            logger.debug(f"Path {path} exists")
-    validate_paths(paths)
-
-    generate_ftd_study_yaml(paths, project_id)
-
-
-    study_config = read_file(paths["study_yml_path"])
-    ftd_config = read_file(paths["ftd_study_yml_path"])
-
-
-    src_dd_objs = []
-    for table_name, table_info in study_config["data_dictionary"].items():
-
-        logger.debug(f"Processing data_dictionaries: {table_name}")
-
-        processor = file_setup(study_config, ftd_config, table_name, table_info, paths)
-
-        if processor:
-            src_dd_objs.append(processor)
-
-    src_df_objs = []
-    for table_name, table_info in study_config["data_files"].items():
-
-        logger.debug(f"Processing data_dictionaries: {table_name}")
-        processor = file_setup(study_config, ftd_config, table_name, table_info, paths)
-
-        if processor:
-            src_df_objs.append(processor)
-
-    logger.debug(f"Start validation of {study_id} config")
-    validate_study_config(study_config, paths["src_data_dir"])
-    logger.debug("End validation of study config")
-
-    for df_obj in src_df_objs:
-
-        generate_model_docs(df_obj)
-
-        generate_ftd_model_docs(df_obj)
-        
-        generate_basic_dbt_project_yml(df_obj.paths["dbtp_catalog_dir"], "catalog", df_obj.pipeline_db)
-
-        generate_tgt_model_docs(df_obj)
-
-        generate_run_script(df_obj)
-
-    logger.info(f"REMINDER: Update {tgt_id} dbt_project.yml.")
-    logger.info("REMINDER: Check the imports rootdir/packages.yml.")
-    logger.info(f"Generation complete")
-
-
-if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Initialize DBT transformation for study data.")
-    
-    parser.add_argument("-y", "--yaml", required=True, help="Path to the YAML study_configuration file")
+    parser.add_argument(
+        "-s",
+        "--study_id",
+        required=True,
+        help="The study's readable identifier. Pipeline use only.",
+    )
 
     parser.add_argument("-p", "--project_id", required=True, help="The project associated with the study")
 
@@ -122,4 +67,69 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(study_id=args.study_id, tgt_id=args.tgt_id, src_data_path=args.filepath)
+    study_id=args.study_id
+    project_id = args.project_id
+    tgt_id=args.tgt_id
+
+    logger.info(f'Generating the {project_id} {study_id} dbt pipeline...')
+    # Set paths
+    paths = get_paths(study_id, project_id, tgt_id, args.filepath)
+    # If project dirs don't exist create them.
+    # Will create the project/study models in the dir that the script is triggered to run in.
+    for var, path in paths.items():
+        if var.endswith("dir"):
+            path.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Path {path} exists")
+    validate_paths(paths)
+
+    generate_ftd_study_yaml(paths, project_id)
+
+    study_config = read_file(paths["study_yml_path"])
+    ftd_config = read_file(paths["ftd_study_yml_path"])
+
+    src_dd_objs = []
+    for table_name, table_info in study_config["data_dictionary"].items():
+
+        logger.debug(f"Processing data_dictionaries: {table_name}")
+
+        processor = file_setup(study_config, ftd_config, table_name, table_info, paths)
+
+        if processor:
+            src_dd_objs.append(processor)
+
+    src_df_objs = []
+
+    for table_name, table_info in study_config["data_files"].items():
+
+        for file in table_info.get("identifier"):
+            logger.debug(f"Processing data_files: {table_name}")
+            processor = file_setup(
+                study_config, ftd_config, table_name, table_info, paths, file
+            )
+
+            if processor:
+                src_df_objs.append(processor)
+
+    logger.debug(f"Start validation of {study_id} config")
+    validate_study_config(study_config, paths["src_data_dir"])
+    logger.debug("End validation of study config")
+
+    for df_obj in src_df_objs:
+
+        generate_model_docs(df_obj)
+
+        generate_ftd_model_docs(df_obj)
+
+        generate_basic_dbt_project_yml(df_obj.paths["dbtp_catalog_dir"], "catalog", df_obj.pipeline_db)
+
+        generate_tgt_model_docs(df_obj)
+
+        generate_run_script(df_obj)
+
+    logger.info(f"REMINDER: Update {tgt_id} dbt_project.yml.")
+    logger.info("REMINDER: Check the imports rootdir/packages.yml.")
+    logger.info(f"Generation complete")
+
+
+if __name__ == "__main__":
+    main()
