@@ -4,21 +4,44 @@ from pathlib import Path
 
 
 def verify_files_exist(study_yml_path, info):
-        identifier_path = study_yml_path / Path(f"{info['identifier']}")
+
+    identifiers = info["identifier"]
+    if not isinstance(identifiers, list):
+        identifiers = [identifiers]
+
+    for file in identifiers:
+        identifier_path = study_yml_path / Path(f"{file}")
         generated_path = study_yml_path / Path(f"{info['src_file_id']}")
 
         if not os.path.exists(identifier_path) and not os.path.exists(generated_path):
-            logger.warning(f"Error: One of the following dds are expected to exist: {identifier_path} or {generated_path}")
+            logger.warning(
+                f"Error: One of the following dds are expected to exist: {identifier_path} or {generated_path}"
+            )
 
 
 def validate_dfs(data_files, study_yml_path, file_ids):
     # Ensure each file_id in data_files matches one in data_dictionary
     for file_id, data_info in data_files.items():
+
+        if not isinstance(data_info["identifier"], list):
+            raise ValueError(
+                f"Error: The 'identifier' should be a list! Check the study yaml {data_info['identifier']}."
+            )
+
+        if not isinstance(data_info["join_cols"], dict):
+            raise ValueError(
+                f"Error: The 'join_cols' should be a dict! Check the study yaml {data_info['identifier']}."
+            )
+
         if file_id not in file_ids:
-            raise ValueError(f"Error: data_files contains file_id '{file_id}' which is missing in data_dictionary.")
+            raise ValueError(
+                f"Error: data_files contains file_id '{file_id}' which is missing in data_dictionary."
+            )
 
         if data_info is None:
-            raise ValueError(f"Error: Missing filenames in data_files for file_id: {file_id}")
+            raise ValueError(
+                f"Error: Missing filenames in data_files for file_id: {file_id}"
+            )
 
         verify_files_exist(study_yml_path, data_info)
 
@@ -50,7 +73,9 @@ def validate_study_config(study_config, study_yml_path):
     """
 
     if "data_dictionary" not in study_config or not study_config["data_dictionary"]:
-        raise ValueError("Error: The data_dictionary section must have at least one entry.")
+        raise ValueError(
+            "Error: The data_dictionary section must have at least one entry."
+        )
 
     if "data_files" not in study_config or not study_config["data_files"]:
         raise ValueError("Error: The data_files section must have at least one entry.")

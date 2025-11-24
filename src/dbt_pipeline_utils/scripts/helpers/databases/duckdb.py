@@ -2,7 +2,6 @@ from dbt_pipeline_utils.scripts.helpers.data_processors import DatabaseBC
 from dbt_pipeline_utils.scripts.helpers.general import *
 from pathlib import Path
 import subprocess
-import json
 
 class DuckDBFileProcessor(DatabaseBC):
     def __init__(self, study_config, ftd_config, table_name, table_info, paths, file):
@@ -19,8 +18,8 @@ class DuckDBFileProcessor(DatabaseBC):
         This function will run using an import macro within the dbt projcet itself.
         """
         csv_path = f"{self.paths['src_data_dir']}/{self.src_data_csv}"
-        tablename = Path(self.src_data_csv).stem
-        fully_qualified_tablename = f"{tablename}"
+
+        fully_qualified_tablename = Path(self.src_data_csv).stem
 
         args = f'{{fq_tablename: "{fully_qualified_tablename}", csv_path: "{csv_path}"}}'
 
@@ -61,7 +60,6 @@ class DuckDBFileProcessor(DatabaseBC):
         '''
         pass
 
-
     def generate_dbt_project_yaml(self):
         study_info = {}
 
@@ -94,9 +92,3 @@ class DuckDBFileProcessor(DatabaseBC):
         filepath = self.paths["dbtp_src_study_dir"] / "dbt_project.yml"
 
         write_file(filepath, dbt_config)
-
-    # def get_src_table_key(self, table_id):
-    #     '''
-    #     The filename that is stored with column data. 
-    #     '''
-    #     return Path(self.src_data_csv).stem
