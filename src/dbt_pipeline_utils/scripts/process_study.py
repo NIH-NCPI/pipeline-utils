@@ -65,13 +65,9 @@ def main():
         # generate hard copies of syn dd's prior to study_config validation
 
         for file in table_info.get("identifier"):
-
-            df_study_info = study_info.copy()
-            df_study_info.update({"table_name": table_name})
-
-            logger.debug(f"Processing data_dictionaries: {table_name}")
+            logger.debug(f"Processing data_files: {table_name}")
             processor = file_setup(
-                study_config, ftd_config, table_name, table_info, paths
+                study_config, ftd_config, table_name, table_info, paths, file
             )
 
             if processor:
