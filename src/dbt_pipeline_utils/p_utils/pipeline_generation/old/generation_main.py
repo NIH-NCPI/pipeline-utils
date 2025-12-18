@@ -1,0 +1,65 @@
+import pandas as pd
+
+
+def generate_model_docs(intermediate_obj):
+    """Main function to generate dbt model files, loading column data once."""
+
+    intermediate_obj.generate_dbt_project_yml()
+
+    # df_obj.generate_stg_dds()
+
+    # column_data = df_obj.load_src_column_data()
+
+    # df_obj.generate_dbt_models_yml(column_data, df_obj.paths["dbtp_src_study_model_dir"])
+
+    # df_obj.generate_dbt_sources_yml(column_data, df_obj.paths["dbtp_src_study_model_dir"])
+
+    # # column_description files build don't 'overwrite', they will update. Delete the file to refresh.
+    # df_obj.generate_column_descriptions(column_data, df_obj.paths["dbtp_src_study_model_docs_dir"])
+
+    # df_obj.generate_model_descriptions(df_obj.paths["dbtp_src_study_model_docs_dir"])
+
+    # # TODO we may not need this one for duckdb passing
+    # df_obj.generate_src_sql_files(df_obj.paths["dbtp_src_study_model_dir"])
+
+    # df_obj.generate_stg_sql_files(
+    #     column_data,
+    #     df_obj.paths["dbtp_src_study_model_dir"]
+    # )
+
+
+def generate_int_model_docs(df_obj):
+    """Main function to generate dbt model files, loading column data once."""
+
+    # NOTE: The data/project_id/int_study.yaml is also generated. See generate_docs.generate_int_study_yaml.
+
+    df_obj.generate_int_dds()
+
+    column_data = df_obj.load_int_column_data()
+
+    df_obj.generate_dbt_models_yml(column_data, df_obj.paths["dbtp_intc_study_docs_dir"], int_model=True)
+    
+    df_obj.generate_int_sql_files(column_data)
+
+    df_obj.generate_int_dbt_project_yaml()
+    
+    df_obj.generate_column_descriptions(column_data,df_obj.paths["dbtp_intc_study_docs_dir"],int_model=True)
+
+def generate_tgt_model_docs(df_obj):
+    """The tgt model should only need to be generated once, and then small tweaks made."""
+
+    column_data = df_obj.load_int_column_data()
+
+    # If static tgt models don't exist, create them using the int dds
+    df_obj.create_new_tgt_models()
+
+    # If static tgt macros don't exist, create them using the int dds
+    df_obj.create_new_tgt_macros(column_data)
+
+    df_obj.generate_tgt_dbt_project_yaml()
+
+    # copy over the tgt model
+    df_obj.copy_directory()
+
+def generate_run_script(df_obj):
+    df_obj.generate_dbt_run_script()

@@ -1,0 +1,83 @@
+import argparse
+from pathlib import Path
+
+from dbt_pipeline_utils.p_utils.general import read_file
+from dbt_pipeline_utils.p_utils.factory_functions import build_pipeline_objects
+from dbt_pipeline_utils.p_utils.configs import StudyConfig
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description="Initialize DBT transformation for study data."
+    )
+
+    parser.add_argument(
+        "-c",
+        "--config_dir",
+        required=True,
+        help="Path to the directory containing source data files.",
+    )
+    # parser.add_argument(
+    #     "-i",
+    #     "--int_model_id",
+    #     required=True,
+    #     help="",
+    # )
+
+    args = parser.parse_args()
+
+    # Set up paths and load the study config
+    study_config_path = Path(args.config_dir)
+    raw_config = read_file(study_config_path)
+    study_config = StudyConfig.from_dict(raw_config)
+
+    # Create pipeline objects
+    # print(study_config)
+    pipeline_objects = build_pipeline_objects(study_config)
+
+    for table_name, obj in pipeline_objects.items():
+        print(f"{table_name}: {obj}")
+
+        obj.structure.generate_dbt_project_yaml(obj.paths, obj.int_config)
+
+    #         # Call methods from IntermediateObject
+    #         int_obj.generate_dbt_project_yml()
+
+    #         int_obj.generate_stg_dds()
+
+    #         column_data = int_obj.load_src_column_data()
+
+    #         int_obj.generate_dbt_models_yml(
+    #             column_data, int_obj.paths["dbtp_src_study_model_dir"]
+    #         )
+
+    #         int_obj.generate_dbt_sources_yml(
+    #             column_data, int_obj.paths["dbtp_src_study_model_dir"]
+    #         )
+
+    # # column_description files build don't 'overwrite', they will update. Delete the file to refresh.
+    # df_obj.generate_column_descriptions(column_data, df_obj.paths["dbtp_src_study_model_docs_dir"])
+
+    # df_obj.generate_model_descriptions(df_obj.paths["dbtp_src_study_model_docs_dir"])
+
+    # # TODO we may not need this one for duckdb passing
+    # df_obj.generate_src_sql_files(df_obj.paths["dbtp_src_study_model_dir"])
+
+    # df_obj.generate_stg_sql_files(
+    #     column_data,
+    #     df_obj.paths["dbtp_src_study_model_dir"]
+    # )
+
+    # generate_model_docs(intermediate_obj)
+
+    # generate_int_model_docs(df_obj)
+
+    # generate_basic_dbt_project_yml(df_obj.paths["dbtp_catalog_dir"], "catalog", df_obj.pipeline_db)
+
+    # generate_tgt_model_docs(df_obj)
+
+    # generate_run_script(df_obj)
+
+    # logger.info(f"REMINDER: Update {self.tgt_id} dbt_project.yml.")
+    # logger.info("REMINDER: Check the imports rootdir/packages.yml.")
+    # logger.info(f"Generation complete")
