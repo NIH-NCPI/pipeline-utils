@@ -1,3 +1,9 @@
+
+<!-- TODO -->
+<!-- export LOCUTUS_LOGLEVEL='INFO' # INFO, DEBUG, WARNING, etc -->
+<!-- export USE_RICH='True' # Used with pipeline-utils logger. Import dev_requirements.txt -->
+
+
 # dbt-utils
 {description}
 

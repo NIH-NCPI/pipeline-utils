@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-
+from dbt_pipeline_utils import logger
 from dbt_pipeline_utils.p_utils.general import read_file
 from dbt_pipeline_utils.p_utils.factory_functions import build_pipeline_objects
 from dbt_pipeline_utils.p_utils.configs import StudyConfig
@@ -12,10 +12,10 @@ def main():
     )
 
     parser.add_argument(
-        "-c",
-        "--config_dir",
+        "-f",
+        "--study_config_filepath",
         required=True,
-        help="Path to the directory containing source data files.",
+        help="Path to {study}_study.yaml from root dir. Example 'data/{study_id}/{study_id}_study.yaml'",
     )
     # parser.add_argument(
     #     "-i",
@@ -27,18 +27,22 @@ def main():
     args = parser.parse_args()
 
     # Set up paths and load the study config
-    study_config_path = Path(args.config_dir)
+    study_config_path = Path(args.study_config_filepath)
     raw_config = read_file(study_config_path)
     study_config = StudyConfig.from_dict(raw_config)
 
     # Create pipeline objects
     # print(study_config)
-    pipeline_objects = build_pipeline_objects(study_config)
+    pipeline_objects = build_pipeline_objects(study_config, study_config_path)
 
+
+#TODO Only trigger generation or additions when necessary.
+#TODO Update paths. to use *_model_name
     for table_name, obj in pipeline_objects.items():
-        print(f"{table_name}: {obj}")
+        logger.info(f"\n\n\n{table_name.upper()}:")
+        logger.info(obj)
 
-        obj.structure.generate_dbt_project_yaml(obj.paths, obj.int_config)
+        obj.structure.generate_dbt_project_yaml(obj.paths, obj.int_config, obj.exp_config)
 
     #         # Call methods from IntermediateObject
     #         int_obj.generate_dbt_project_yml()
