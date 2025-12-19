@@ -50,7 +50,7 @@ class AnvilStructureSC(StructureBC):
         pl_exp_models_dir = pl_exp_dir / Path("models")
         pl_exp_models_docs_dir = pl_exp_models_dir / Path("docs")
 
-        static_data_dir = pl_data_dir / Path("static")
+        static_data_dir = pl_root_dir / Path("data/static")
         cdm_dir = static_data_dir / Path("common_data_models")
         static_internal_dir = cdm_dir / Path("internal")
         static_int_metadata_dir = static_internal_dir / Path(f"metadata/{self.int_model_name}")
@@ -122,19 +122,27 @@ class AnvilStructureSC(StructureBC):
         self.generate_base_dbt_project_yml(
            exp_dir , self.exp_model_name, self.db_profile, "create"
         )
-        # import pdb
-        # pdb.set_trace()
-        # add new models if they don't already exist
-        self.dbt_project_add_models(
-            src_dir, self.study_tables, self.src_dbtp_def, self.src_dbtp_all
+
+        # Add new vars if they don't already exist.
+        self.dbt_project_add_vars(
+            src_dir, self.src_dbtp_def
+        )
+        self.dbt_project_add_vars(
+            int_dir, self.int_dbtp_def
+        )
+        self.dbt_project_add_vars(
+            exp_dir, self.exp_dbtp_def
         )
 
+        # Add new models if they don't already exist
         self.dbt_project_add_models(
-            int_dir, int_config.int_tables, self.int_dbtp_def, self.int_dbtp_all
+            src_dir, self.study_tables, self.src_dbtp_def
+        )
+        self.dbt_project_add_models(
+            int_dir, int_config.int_tables, self.int_dbtp_def
             )
-
         self.dbt_project_add_models(
-            exp_dir, exp_config.exp_tables, self.exp_dbtp_def, self.exp_dbtp_all
+            exp_dir, exp_config.exp_tables, self.exp_dbtp_def
         )
 
     # def get_paths(

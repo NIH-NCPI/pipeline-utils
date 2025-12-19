@@ -37,12 +37,19 @@ def main():
 
 
 #TODO Only trigger generation or additions when necessary.
-#TODO Update paths. to use *_model_name
+
+    any_obj = next(iter(pipeline_objects.values()))
+
+    any_obj.structure.generate_dbt_project_yaml(
+        any_obj.paths,
+        any_obj.int_config,
+        any_obj.exp_config,
+    )
+
     for table_name, obj in pipeline_objects.items():
         logger.info(f"\n\n\n{table_name.upper()}:")
         logger.info(obj)
 
-        obj.structure.generate_dbt_project_yaml(obj.paths, obj.int_config, obj.exp_config)
 
     #         # Call methods from IntermediateObject
     #         int_obj.generate_dbt_project_yml()

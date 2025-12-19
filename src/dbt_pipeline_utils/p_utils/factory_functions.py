@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pathlib import Path
 from dbt_pipeline_utils.p_utils.general import read_file
 from dbt_pipeline_utils.p_utils.configs import StudyConfig, InternalConfig, ExportConfig
@@ -27,12 +27,10 @@ class PipelineObject:
     study_data_dir: Path
 
     # dbt_project defaults
-    src_dbtp_def: dict[str, str]
-    src_dbtp_all: dict[str, str]
-    int_dbtp_def: dict[str, str]
-    int_dbtp_all: dict[str, str]
-    exp_dbtp_def: dict[str, str]
-    exp_dbtp_all: dict[str, str]
+    src_dbtp_def: dict[str, Any]
+    int_dbtp_def: dict[str, Any]
+    exp_dbtp_def: dict[str, Any]
+
 
     # data files
     df_identifiers: List[str]
@@ -66,11 +64,8 @@ class PipelineObject:
             db_profile=self.db_profile,
             study_config_path=self.study_config_path,
             src_dbtp_def=self.src_dbtp_def,
-            src_dbtp_all=self.src_dbtp_all,
             int_dbtp_def=self.int_dbtp_def,
-            int_dbtp_all=self.int_dbtp_all,
             exp_dbtp_def=self.exp_dbtp_def,
-            exp_dbtp_all=self.exp_dbtp_all,
             study_tables=self.study_tables,
             int_model_prefix=self.int_config.model_prefix,
             int_model_name=self.int_config.model_name,
@@ -139,11 +134,8 @@ def build_pipeline_objects(
             int_model_name=study_config.pipeline.int_model_name,
             study_tables=study_config.study_tables,
             src_dbtp_def=study_config.dbt_proj_config["src"].dbt_dict(),
-            src_dbtp_all=study_config.dbt_proj_config["src_all"].dbt_dict(),
             int_dbtp_def=study_config.dbt_proj_config["int"].dbt_dict(),
-            int_dbtp_all=study_config.dbt_proj_config["int_all"].dbt_dict(),
             exp_dbtp_def=study_config.dbt_proj_config["exp"].dbt_dict(),
-            exp_dbtp_all=study_config.dbt_proj_config["exp_all"].dbt_dict(),
         )
 
     # Phase 2: load shared configs ONCE

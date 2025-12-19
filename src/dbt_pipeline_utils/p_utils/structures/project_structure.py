@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Type, Dict, ClassVar
+from typing import Type, Dict, ClassVar, Any
 from pathlib import Path
 from dbt_pipeline_utils import logger
 from dbt_pipeline_utils.p_utils.general import write_file, get_existing_yaml
@@ -25,12 +25,9 @@ class StructureBC:
     study_data_dir: Path | None = None
 
     # dbt defaults
-    src_dbtp_def: Dict = field(default_factory=dict)
-    src_dbtp_all: Dict = field(default_factory=dict)
-    int_dbtp_def: Dict = field(default_factory=dict)
-    int_dbtp_all: Dict = field(default_factory=dict)
-    exp_dbtp_def: Dict = field(default_factory=dict)
-    exp_dbtp_all: Dict = field(default_factory=dict)
+    src_dbtp_def: Dict[str,Any] = field(default_factory=dict)
+    int_dbtp_def: Dict[str,Any] = field(default_factory=dict)
+    exp_dbtp_def: Dict[str,Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.study_config_path is not None:
@@ -62,11 +59,8 @@ class StructureBC:
         db_profile: str,
         study_config_path=None,
         src_dbtp_def: dict[str, str] = None,
-        src_dbtp_all: dict[str, str] = None,
         int_dbtp_def: dict[str, str] = None,
-        int_dbtp_all: dict[str, str] = None,
         exp_dbtp_def: dict[str, str] = None,
-        exp_dbtp_all: dict[str, str] = None,
         study_tables: list[str],
         int_model_prefix: str,
         int_model_name: str,
@@ -81,11 +75,8 @@ class StructureBC:
                 db_profile=db_profile,
                 study_config_path=study_config_path,
                 src_dbtp_def=src_dbtp_def or {},
-                src_dbtp_all=src_dbtp_all or {},
                 int_dbtp_def=int_dbtp_def or {},
-                int_dbtp_all=int_dbtp_all or {},
                 exp_dbtp_def=exp_dbtp_def or {},
-                exp_dbtp_all=exp_dbtp_all or {},
                 study_tables=study_tables,
                 int_model_prefix=int_model_prefix,
                 int_model_name=int_model_name,
@@ -124,38 +115,47 @@ class StructureBC:
         filepath = filepath / "dbt_project.yml"
 
         write_file(filepath, data, mode=mode)
-
-    def dbt_project_add_models(
-        self,
-        filepath: Path,
-        table_names: list,
-        dbtp_def_each: dict,
-        dbtp_def_all: dict,
-    ) -> None:
-
-        # Load existing YAML (empty dict if missing)
+    def dbt_project_add_models(self, filepath: Path, table_names: list[str], dbtp_defs: dict) -> None:
+        """
+        Add top-level model defaults (+schema, +materialized) and table entries under models.
+        """
         filepath = filepath / "dbt_project.yml"
         existing = get_existing_yaml(filepath)
 
         models = existing.setdefault("models", {})
         study_models = models.setdefault(self.study_id, {})
 
-        # Add top-level defaults only if dbtp_def_all has any non-None values
-        top_defaults = {k: v for k, v in dbtp_def_all.items() if v is not None}
-        if top_defaults:
-            # Merge top-level defaults without overwriting existing tables
-            for k, v in top_defaults.items():
-                if k not in study_models:
-                    study_models[k] = v
+        # Top-level model defaults (NO vars here)
+        for key in ("+schema", "+materialized"):
+            val = dbtp_defs.get(key)
+            if val is not None and key not in study_models:
+                study_models[key] = val
 
-        # Add individual tables
+        # Add empty tables
         for table_id in table_names:
-            # Skip if already exists
-            if table_id not in study_models:
-                study_models[table_id] = {}
+            study_models.setdefault(table_id, {})
 
-            table_defaults = {k: v for k, v in dbtp_def_each.items() if v is not None}
-            study_models[table_id].update(table_defaults)
+        write_file(filepath, existing, mode="overwrite")
 
-    def dbt_project_add_vars(self):
-        pass
+
+    def dbt_project_add_vars(self, filepath: Path, dbtp_defs: dict) -> None:
+        """
+        Add or update project-level vars in dbt_project.yml.
+        """
+        filepath = filepath / "dbt_project.yml"
+        existing = get_existing_yaml(filepath)
+
+        vars_section = existing.setdefault("vars", {})
+        if vars_section != {}:
+            logger.debug(f"No action performed. File '{filepath}' already has defined 'vars'. ")
+            pass
+        
+        incoming_vars = dbtp_defs.get("vars")
+        if incoming_vars:
+            for k, v in incoming_vars.items():
+                if isinstance(v, str):
+                    vars_section[k] = str(v)  # ensure YAML emits quotes
+                else:
+                    vars_section[k] = v
+
+        write_file(filepath, existing, mode="overwrite")

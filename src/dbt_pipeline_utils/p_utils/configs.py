@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pathlib import Path
 
 
@@ -24,6 +24,7 @@ class StudyStudyConfig:
 class StudyDbtProjectDefaults:
     schema: Optional[str] = None
     materialized: Optional[str] = None
+    vars: Optional[Dict[str, Any]] = None
 
     def dbt_dict(self) -> dict:
         data = {}
@@ -34,8 +35,11 @@ class StudyDbtProjectDefaults:
         if self.materialized is not None:
             data["+materialized"] = self.materialized
 
+        if self.vars is not None:
+            data["vars"] = self.vars
+
         return data
-    
+
 @dataclass(frozen=True)
 class StudyDataDictionaryConfig:
     identifier: str
@@ -80,6 +84,7 @@ class StudyConfig:
                 name: StudyDbtProjectDefaults(
                     schema=cfg.get("schema"),
                     materialized=cfg.get("materialized"),
+                    vars=cfg.get("vars")
                 )
                 for name, cfg in raw["dbt_project"].items()
             },
@@ -139,7 +144,6 @@ class InternalConfig:
             data_dictionary=data_dict,
             int_tables=[v.table_id for v in data_dict.values()],
         )
-
 
 
 # TODO tgt model id to name use exp everywhere.
