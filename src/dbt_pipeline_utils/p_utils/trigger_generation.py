@@ -35,39 +35,30 @@ def main():
     # print(study_config)
     pipeline_objects = build_pipeline_objects(study_config, study_config_path)
 
-
-#TODO Only trigger generation or additions when necessary.
+    # TODO Only trigger generation or additions when necessary.
 
     any_obj = next(iter(pipeline_objects.values()))
 
     any_obj.structure.generate_dbt_project_yaml(
-        any_obj.paths,
         any_obj.int_config,
         any_obj.exp_config,
     )
+
+    any_obj.structure.generate_models_yml_files(
+        any_obj.int_config,
+        any_obj.exp_config
+    )
+    any_obj.structure.generate_static_docs_files(any_obj.int_config, any_obj.exp_config)
 
     for table_name, obj in pipeline_objects.items():
         logger.info(f"\n\n\n{table_name.upper()}:")
         logger.info(obj)
 
+        obj.structure.generate_stg_dds()
 
-    #         # Call methods from IntermediateObject
-    #         int_obj.generate_dbt_project_yml()
+        obj.structure.generate_sources_yml_files()
 
-    #         int_obj.generate_stg_dds()
-
-    #         column_data = int_obj.load_src_column_data()
-
-    #         int_obj.generate_dbt_models_yml(
-    #             column_data, int_obj.paths["dbtp_src_study_model_dir"]
-    #         )
-
-    #         int_obj.generate_dbt_sources_yml(
-    #             column_data, int_obj.paths["dbtp_src_study_model_dir"]
-    #         )
-
-    # # column_description files build don't 'overwrite', they will update. Delete the file to refresh.
-    # df_obj.generate_column_descriptions(column_data, df_obj.paths["dbtp_src_study_model_docs_dir"])
+        obj.structure.generate_study_docs_files()
 
     # df_obj.generate_model_descriptions(df_obj.paths["dbtp_src_study_model_docs_dir"])
 

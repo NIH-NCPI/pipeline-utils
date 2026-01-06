@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
 from pathlib import Path
+from dbt_pipeline_utils.p_utils.general import normalize_name
 
 
 @dataclass(frozen=True)
@@ -113,8 +114,7 @@ Internal Configs are initiallized in the PipelineObject after 'paths'.
 @dataclass(frozen=True)
 class InternalDataDictionary:
     identifier: Path
-    pipeline_identifier: Path
-    table_id: str
+    int_dd_identifier: Path
 
 
 @dataclass(frozen=True)
@@ -126,14 +126,15 @@ class InternalConfig:
 
     @classmethod
     def from_dict(cls, raw: dict) -> "InternalConfig":
-        model_name = raw["model_name"]
-        model_prefix = raw["model_prefix"]
+        model_name = normalize_name(raw["model_name"], trailing=False, extension="drop")
+        model_prefix = normalize_name(raw["model_prefix"], trailing=False, extension='drop')
 
         data_dict: Dict[str, InternalDataDictionary] = {
             name: InternalDataDictionary(
                 identifier=Path(cfg["identifier"]),
-                pipeline_identifier=Path(cfg["pipeline_identifier"]),
-                table_id=f"{model_prefix}_{name}",
+                int_dd_identifier=Path(
+                    normalize_name([model_prefix, '_', cfg["identifier"]], trailing=False, extension='keep')
+                ),
             )
             for name, cfg in raw["data_dictionary"].items()
         }
@@ -142,7 +143,7 @@ class InternalConfig:
             model_name=model_name,
             model_prefix=model_prefix,
             data_dictionary=data_dict,
-            int_tables=[v.table_id for v in data_dict.values()],
+            int_tables=[str(v.int_dd_identifier.stem) for v in data_dict.values()],
         )
 
 
@@ -152,8 +153,8 @@ class InternalConfig:
 @dataclass(frozen=True)
 class ExportDataDictionary:
     identifier: Path
-    pipeline_identifier: Path
-    table_id: str
+    exp_dd_identifier: Path
+    # table_id: str
 @dataclass(frozen=True)
 class ExportConfig:
     model_name: str
@@ -164,16 +165,17 @@ class ExportConfig:
     @classmethod
     def from_dict(cls, raw: dict) -> "ExportConfig":
         data_dict: Dict[str, ExportDataDictionary] = {}
-        model_name = raw['model_name']
-        model_prefix = raw['model_prefix']
+        model_name = normalize_name(raw["model_name"], trailing=False, extension="drop")
+        model_prefix = normalize_name(raw['model_prefix'], trailing=False, extension='drop')
         for name, cfg in raw["data_dictionary"].items():
             data_dict[name] = ExportDataDictionary(
                 identifier=Path(cfg["identifier"]),
-                pipeline_identifier=Path(cfg["pipeline_identifier"]),
-                table_id=f"{model_prefix}_{name}",
+                exp_dd_identifier=Path(
+                    normalize_name([model_prefix, '_', cfg["identifier"]], trailing=False, extension='keep')
+                ),
             )
 
-        exp_tables = [v.table_id for v in data_dict.values()]
+        exp_tables = [str(v.exp_dd_identifier.stem) for v in data_dict.values()]
 
         return cls(
             model_name=model_name,

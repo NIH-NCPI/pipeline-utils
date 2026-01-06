@@ -62,7 +62,7 @@ class SourceStage:
 
         for table_id, table_info in self.data_dictionaries.items():
             filepath = self.paths[
-                "src_data_dir"
+                "study_data_dir"
             ] / self.project_structure.get_src_dd_key(table_id)
 
             logger.debug(f"Processing table: {table_id}")

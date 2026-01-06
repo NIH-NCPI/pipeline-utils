@@ -74,7 +74,7 @@ def main():
                 src_df_objs.append(processor)
 
     logger.debug(f"Start validation of {study_id} config")
-    validate_study_config(study_config, paths["src_data_dir"])
+    validate_study_config(study_config, paths["study_data_dir"])
     logger.debug("End validation of study config")
 
     for dd in src_dd_objs:

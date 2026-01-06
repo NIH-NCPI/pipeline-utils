@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 from pathlib import Path
+from dbt_pipeline_utils.p_utils.structures.structure_context import StructureContext
 from dbt_pipeline_utils.p_utils.general import read_file
 from dbt_pipeline_utils.p_utils.configs import StudyConfig, InternalConfig, ExportConfig
 from dbt_pipeline_utils.p_utils.databases.databases import DatabaseBC
@@ -10,7 +11,7 @@ from dbt_pipeline_utils.p_utils.structures.project_structure import StructureBC
 @dataclass
 class PipelineObject:
     study_config_path: Path
-    name: str
+    table_name: str
 
     # pipeline metadata
     structure_key: str
@@ -30,7 +31,6 @@ class PipelineObject:
     src_dbtp_def: dict[str, Any]
     int_dbtp_def: dict[str, Any]
     exp_dbtp_def: dict[str, Any]
-
 
     # data files
     df_identifiers: List[str]
@@ -54,23 +54,37 @@ class PipelineObject:
         self.db = DatabaseBC.define_db(self.pipeline_db)
 
     def finalize(self) -> None:
-        if self.int_config is None or self.exp_config is None:
-            raise RuntimeError("Configs must be loaded before finalizing PipelineObject")
+        """
+        Finalize the PipelineObject by building the StructureContext,
+        defining the structure, and computing paths.
+        """
+        if not self.int_config or not self.exp_config:
+            raise RuntimeError("Internal and Export configs must be loaded before finalize()")
 
-        self.structure = StructureBC.define_structure(
-            self.structure_key,
+        context = StructureContext(
+            table_name=self.table_name,
+            df_identifiers=self.df_identifiers,
+            dd_identifier=self.dd_identifier,
+            dd_format=self.dd_format,
             study_id=self.study_id,
             project_id=self.project_id,
             db_profile=self.db_profile,
+            int_model_name=self.int_config.model_name,
+            int_model_prefix=self.int_config.model_prefix,
+            exp_model_name=self.exp_config.model_name,
+            exp_model_prefix=self.exp_config.model_prefix,
+            study_tables=self.study_tables,
             study_config_path=self.study_config_path,
+            study_data_dir=self.study_data_dir,
+            pipeline_data_dir=self.pipeline_data_dir,
             src_dbtp_def=self.src_dbtp_def,
             int_dbtp_def=self.int_dbtp_def,
             exp_dbtp_def=self.exp_dbtp_def,
-            study_tables=self.study_tables,
-            int_model_prefix=self.int_config.model_prefix,
-            int_model_name=self.int_config.model_name,
-            exp_model_prefix=self.exp_config.model_prefix,
-            exp_model_name=self.exp_config.model_name,
+        )
+
+        self.structure = StructureBC.define_structure(
+            self.structure_key,
+            context=context,
         )
 
         self.paths = self.structure.get_paths()
@@ -110,13 +124,12 @@ def build_pipeline_objects(
 
     pipeline_objects: dict[str, PipelineObject] = {}
 
-    # Phase 1: build objects
-    for table_name, df_cfg in study_config.data_file.items():
-        dd_cfg = study_config.data_dictionary[table_name]
+    for t_name, df_cfg in study_config.data_file.items():
+        dd_cfg = study_config.data_dictionary[t_name]
 
-        pipeline_objects[table_name] = PipelineObject(
+        pipeline_objects[t_name] = PipelineObject(
             study_config_path=study_config_path,
-            name=table_name,
+            table_name=t_name,
             df_identifiers=df_cfg.identifiers,
             df_import_type=df_cfg.import_type,
             join_cols=df_cfg.join_cols,
@@ -138,13 +151,11 @@ def build_pipeline_objects(
             exp_dbtp_def=study_config.dbt_proj_config["exp"].dbt_dict(),
         )
 
-    # Phase 2: load shared configs ONCE
     any_po = next(iter(pipeline_objects.values()))
 
     any_po.load_internal_config()
     any_po.load_export_config()
 
-    # Phase 3: inject + finalize
     for po in pipeline_objects.values():
         po.int_config = any_po.int_config
         po.exp_config = any_po.exp_config

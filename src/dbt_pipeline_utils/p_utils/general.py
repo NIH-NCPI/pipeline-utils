@@ -1,10 +1,19 @@
+"""
+Contains the base class for project structures.
+
+To run integration tests with 'doctests':
+python -m dbt_pipeline_utils.p_utils.general
+"""
+
 import os
 import yaml
 import re
 import pandas as pd
 import dbt_pipeline_utils
 from pathlib import Path
+import hashlib
 # from dbt_pipeline_utils.p_utils..common import *
+from typing import Iterable
 
 from dbt_pipeline_utils import logger
 
@@ -17,7 +26,7 @@ def read_file(filepath):
     file_handlers = {
         ".yaml": lambda: yaml.safe_load(open(filepath, "r")),
         ".yml": lambda: yaml.safe_load(open(filepath, "r")),
-        ".csv": lambda: pd.read_csv(filepath, header=0),
+        ".csv": lambda: pd.read_csv(filepath, header=0, dtype="string"),
         ".xlsx": lambda: pd.read_excel(filepath, header=0),
         ".sql": Path(filepath).read_text
     }
@@ -103,11 +112,7 @@ def write_file(
 
     except Exception as e:
         logger.exception(
-            "Unexpected error in write_file",
-            extra={
-                "path": str(filepath),
-                "mode": mode,
-            },
+            "Unexpected error in write_file 'path': {filepath}, 'mode': {mode}"
         )
         raise
 
@@ -128,18 +133,6 @@ def tail_path(path: Path, depth: int = 2) -> str:
     parts = path.parts
     return Path(*parts[-(depth + 1) :]).as_posix()
 
-def create_model_table_abs_path(study_id, base_dir, table):
-    paths = get_paths(study_id)
-    t = Path(table)
-    if base_dir == 'src':
-        table_path = paths["dbtp_src_study_model_dir"] / t
-    elif base_dir == 'int':
-        table_path = paths["dbtp_intc_study_dir"] / t
-    else:
-        logger.error(f"create_model_table_path does not recognize {base_dir}. Choices ['src','int']")
-
-    abs_table_path = table_path.resolve()
-    return abs_table_path
 
 def get_existing_yaml(filepath):
 
@@ -167,5 +160,143 @@ def copy_directory(src_dir, dest_dir):
             # Copy file contents manually
             data = read_file(item)
             write_file(target, data)        
-            
+
             logger.debug(f"Copied '{src_dir}' to '{dest_dir}'")
+
+
+SAFE_CHARS = re.compile(r"[^a-zA-Z0-9_]+")
+MAX_IDENTIFIER_LEN = 60
+
+def clean_string(input: str) -> str:
+
+    cleaned = SAFE_CHARS.sub("_", input).lower()
+    return re.sub(r"_+", "_", cleaned).strip("_")
+
+
+def shorten_identifier(input: str, max_len: int = MAX_IDENTIFIER_LEN) -> str:
+    """
+    Truncate a string to `max_len` characters while preserving uniqueness by
+    appending an 8-character hash suffix.
+
+    Behavior:
+    - If input length <= max_len → returned unchanged
+    - If input length > max_len → prefix + '_' + 8-char hash
+
+    Doctest
+    -------
+    >>> shorten_identifier("a" * 10, max_len=10)
+    'aaaaaaaaaa'
+
+    >>> out = shorten_identifier("x" * 80, max_len=20)
+    >>> len(out) <= 20
+    True
+
+    """
+    if len(input) <= max_len:
+        return input
+
+    # Stable hash from full input
+    s_hash = hashlib.md5(input.encode("utf-8")).hexdigest()[:8]
+
+    # Truncate original input
+    keep = max_len - len(s_hash) - 1
+    shortened = f"{input[:keep]}_{s_hash}"
+
+    logger.debug(
+        "Identifier length exceeded %s chars; shortened '%s' -> '%s'",
+        max_len,
+        input,
+        shortened,
+    )
+
+    return shortened
+
+
+def normalize_string(input: str | Path, *, extension: str = "drop") -> str:
+    """
+    Use case: When table names match the associated dd name. This SHOULD be the
+    case for intermediate and export models. Not applicable for
+    raw/src datafiles and dds.
+
+    Lowers
+    Ensures names contain only letters, numbers and underscores.
+
+    extension : {'drop', 'keep'}
+    - 'drop' : normalize only the stem
+    - 'keep' : normalize the stem and reattach the (lowercased) extension
+
+    Doctest
+    -------
+    >>> normalize_string('AccessPolicy_external_id-dd.csv', extension='keep')
+    'accesspolicy_external_id_dd.csv'
+
+    >>> normalize_string('SomeDatafileIdentifier24601).csv')
+    'somedatafileidentifier24601'
+
+    """
+    s_input = str(input)
+    p_input = Path(s_input)
+
+    has_ext = bool(p_input.suffix)
+    stem = p_input.stem if has_ext else s_input
+    ext = p_input.suffix.lower() if has_ext else ""
+
+    normalized = clean_string(stem)
+
+    if extension == "keep" and has_ext:
+        return f"{normalized}{ext}"
+
+    return normalized
+
+
+def normalize_name(
+    input: Iterable[str | None], *, trailing: bool = False, extension: str = "drop"
+) -> str:
+    """
+    Join a list of parts with underscores and normalize the result.
+
+    - Ignores None/empty values
+    - Uses underscores as the delimiter
+    - Optionally appends a trailing underscore
+    - Normalizes via normalize_name()
+
+    Parameters
+    ----------
+    trailing : bool
+        If True, append a trailing underscore.
+
+    Doctest
+    -------
+    >>> normalize_name(['synthetic', 'int'], trailing=True)
+    'synthetic_int_'
+
+    >>> normalize_name(['AccessPolicy', 'stg.csv'], trailing=True)
+    'accesspolicy_stg_'
+
+    >>> normalize_name(['project', None, 'table!24601', 'exp.csv'], extension='keep')
+    'project_table_24601_exp.csv'
+
+    >>> # Long values are shortened deterministically
+    >>> long_parts = ['a' * 40, 'b' * 40]
+    >>> out = normalize_name(long_parts)
+    >>> len(out) <= 60
+    True
+    """
+
+    if isinstance(input, list):
+        input = "_".join(str(i) for i in input)
+
+    normalized = normalize_string(input, extension=extension)
+
+    if trailing and not normalized.endswith("_"):
+        normalized += "_"
+
+    result = shorten_identifier(normalized, MAX_IDENTIFIER_LEN)
+
+    return result
+
+
+if __name__ == "__main__":
+    import doctest
+
+    doctest.testmod(verbose=True)

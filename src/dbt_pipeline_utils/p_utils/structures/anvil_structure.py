@@ -8,7 +8,6 @@ from typing import Dict
 
 
 @StructureBC.register("anvil")
-@dataclass
 class AnvilStructureSC(StructureBC):
     pass
 
@@ -29,15 +28,15 @@ class AnvilStructureSC(StructureBC):
         pl_src_study_model_docs_dir = pl_src_study_model_dir / "docs"
 
         pl_data_dir = (
-            self.study_config_dir
-            if self.study_config_dir is not None
+            self.pipeline_data_dir
+            if self.pipeline_data_dir is not None
             else pl_root_dir / f"data/{self.study_id}"
         )
 
         study_data_dir = (
             self.study_data_dir
             if self.study_data_dir is not None
-            else pl_data_dir
+            else pl_root_dir / f"data/{self.study_id}"
         )
 
         pl_int_dir = pl_catalog_dir / self.int_model_name
@@ -54,12 +53,13 @@ class AnvilStructureSC(StructureBC):
         cdm_dir = static_data_dir / Path("common_data_models")
         static_internal_dir = cdm_dir / Path("internal")
         static_int_metadata_dir = static_internal_dir / Path(f"metadata/{self.int_model_name}")
+        static_int_additions_dir = static_int_metadata_dir / Path("additions")
 
         static_export_dir = cdm_dir / Path("export")
         static_exp_metadata_dir = static_export_dir / Path(
             f"metadata/{self.exp_model_name}"
         )
-        static_exp_model = static_export_dir / self.exp_model_name
+        static_exp_model_dir = static_export_dir / self.exp_model_name
 
         paths = {
             "pl_profiles": pl_profiles,
@@ -74,7 +74,7 @@ class AnvilStructureSC(StructureBC):
             "pl_src_study_model_dir": pl_src_study_model_dir,
             "pl_src_study_model_docs_dir": pl_src_study_model_docs_dir,
             "pl_data_dir": pl_data_dir,
-            "src_data_dir": study_data_dir,
+            "study_data_dir": study_data_dir,
             "static_data_dir": static_data_dir,
             "pl_int_dir": pl_int_dir,
             "pl_int_models_dir": pl_int_models_dir,
@@ -85,8 +85,9 @@ class AnvilStructureSC(StructureBC):
             "pl_exp_models_dir": pl_exp_models_dir,
             "pl_exp_models_docs_dir": pl_exp_models_docs_dir,
             "static_int_metadata_dir": static_int_metadata_dir,
+            "static_int_additions_dir": static_int_additions_dir,
             "static_exp_metadata_dir": static_exp_metadata_dir,
-            "static_exp_model": static_exp_model,
+            "static_exp_model_dir": static_exp_model_dir,
         }
 
         for name, path in paths.items():
@@ -95,23 +96,23 @@ class AnvilStructureSC(StructureBC):
 
         return paths
 
-    def generate_dbt_project_yaml(self, paths, int_config, exp_config):
+    def generate_dbt_project_yaml(self, int_config, exp_config):
 
         if int_config is None or exp_config is None:
             raise RuntimeError(
-                "Internal and export configs must be loaded before generating dbt project YAML"
+                "Internal and export configs must be present to generate dbt_project files"
             )
 
-        src_dir = paths["pl_src_study_dir"]
-        int_dir = paths["pl_int_dir"]
-        exp_dir = paths["static_exp_model"]
+        src_dir = self.paths["pl_src_study_dir"]
+        int_dir = self.paths["pl_int_dir"]
+        exp_dir = self.paths["static_exp_model_dir"]
 
         # generate all of the dbt_project files if they don't exist.
         self.generate_base_dbt_project_yml(
-            paths["pl_root_dir"], 'base', self.db_profile, 'create'
+            self.paths["pl_root_dir"], 'base', self.db_profile, 'create'
         )
         self.generate_base_dbt_project_yml(
-            paths["pl_catalog_dir"], "catalog", self.db_profile, "create"
+            self.paths["pl_catalog_dir"], "catalog", self.db_profile, "create"
         )
         self.generate_base_dbt_project_yml(
            src_dir , self.study_id, self.db_profile, "create"
@@ -145,100 +146,66 @@ class AnvilStructureSC(StructureBC):
             exp_dir, exp_config.exp_tables, self.exp_dbtp_def
         )
 
-    # def get_paths(
-    #     self,
-    #     study_id,
-    #     project_id,
-    #     # int_model_id,
-    #     # tgt_model_id,
-    #     study_config_dir=None,
-    #     study_data_dir=None,
-    # ):
-    #     """
-    #     For automatic validation of dir path creation, end the dir variables with "dir"
-    #     """
-    #     # dbt profiles path
-    #     # Requirement - profiles.yml path
-    #     home_profiles = Path.home() / ".dbt/profiles.yml"
+    def generate_stg_dds(self):
+        input_dd_path = self.paths["study_data_dir"] / self.dd_identifier
 
-    #     # dbt_pipeline_utils paths
-    #     utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
+        output_path = (
+            self.paths["study_data_dir"] / self.study_id / Path(self.int_gen_dd_name)
+        )
+        input_dd_format = self.dd_format
+        additions_filepath = (
+            input_dd_path
+            / self.paths["static_int_additions_dir"]
+            / self.int_stg_additions_name
+        )
 
-    #     # dbt project paths
-    #     pl_root_dir = Path.cwd()
-    #     pl_profiles = pl_root_dir / "profiles.yml"
-    #     pl_project_dir = pl_root_dir / project_id
-    #     pl_catalog_dir = pl_project_dir / Path("catalog")
-    #     pl_scripts_dir = pl_project_dir / Path("scripts")
+        self.generate_dds(input_dd_path, output_path, input_dd_format, additions_filepath)
 
-    #     pl_sources_dir = pl_catalog_dir / Path("sources")
-    #     pl_src_study_dir = pl_sources_dir / study_id
-    #     pl_src_study_model_dir = pl_src_study_dir / Path("models")
-    #     pl_src_study_model_docs_dir = pl_src_study_model_dir / Path("docs")
+    def generate_models_yml_files(self, int_config, exp_config):
 
-    #     # pl_int_dir = pl_catalog_dir / Path(int_model_id)
-    #     # pl_int_models_dir = pl_int_dir / Path("models")
-    #     # pl_int_study_dir = pl_int_models_dir / study_id
-    #     # pl_int_study_docs_dir = pl_int_study_dir / Path("docs")
+        self.generate_models_yml(
+            config=int_config,
+            table_prefix = self.int_table_prefix,
+            input_dd_dir=self.paths["static_int_metadata_dir"],
+            output_dir=self.paths["pl_int_study_docs_dir"],
+        )
 
-    #     # pl_tgt_dir = pl_catalog_dir / Path(tgt_model_id)
-    #     # tgt_docs_dir = pl_tgt_dir / Path("docs")
-    #     # tgt_models_dir = pl_tgt_dir / Path("models")
-    #     # tgt_models_docs_dir = tgt_models_dir / Path("docs")
+        self.generate_models_yml(
+            config=exp_config,
+            table_prefix=self.exp_table_prefix,
+            input_dd_dir=self.paths["static_exp_metadata_dir"],
+            output_dir=self.paths["static_exp_model_dir"],
+        )
 
-    #     # src data filepaths.
-    #     pl_data_dir = pl_root_dir / Path(f"data/{study_id}")
-    #     study_data_dir = pl_root_dir / Path(f"data/{study_id}")
-    #     if study_config_dir is not None:
-    #         pl_data_dir = Path(f"{study_config_dir}")
-    #     if study_data_dir is not None:
-    #         study_data_dir = Path(f"{study_data_dir}")
+    def generate_sources_yml_files(self):
 
-    #     # int_study_data_dir = src_data_dir / Path("int_data_dictionaries")
-    #     # trans_study_data_dir = src_data_dir / Path("int_transformations")
+        self.generate_sources_yml(
+            input_dd_dir=self.paths["study_data_dir"],
+            output_dir=self.paths["pl_src_study_model_dir"],
+        )
 
-    #     # static data paths
-    #     static_data_dir = pl_data_dir / Path("static")
-    #     # int_static_data_dir = static_data_dir / Path("int_data_dictionaries")
-    #     # tgt_static_data_dir = static_data_dir / Path(f"{tgt_model_id}")
+    def generate_study_docs_files(self):
 
-    #     # int_study_yml_path = src_data_dir / "int_study.yaml"
+        # src tables - used in sources.yml
+        self.generate_study_column_descriptions(
+            table_prefix=f"{self.src_table_prefix}",
+            input_dd_dir=self.paths["study_data_dir"],
+            output_dir=self.paths["pl_src_study_model_docs_dir"],
+        )
 
-    #     paths = {
-    #         "pl_profiles": pl_profiles,
-    #         "home_profiles": home_profiles,
-    #         "utils_root_dir": utils_root_dir,
-    #         "pl_root_dir": pl_root_dir,
-    #         "pl_project_dir": pl_project_dir,
-    #         "pl_catalog_dir": pl_catalog_dir,
-    #         "pl_scripts_dir": pl_scripts_dir,
-    #         "pl_sources_dir": pl_sources_dir,
-    #         "pl_src_study_dir": pl_src_study_dir,
-    #         "pl_src_study_model_dir": pl_src_study_model_dir,
-    #         "pl_src_study_model_docs_dir": pl_src_study_model_docs_dir,
-    #         # "pl_int_dir": pl_int_dir,
-    #         # "pl_int_models_dir": pl_int_models_dir,
-    #         # "pl_int_study_dir": pl_int_study_dir,
-    #         # "pl_int_study_docs_dir": pl_int_study_docs_dir,
-    #         # "pl_tgt_dir": pl_tgt_dir,
-    #         # "tgt_docs_dir": tgt_docs_dir,
-    #         # "tgt_models_dir": tgt_models_dir,
-    #         # "tgt_models_docs_dir": tgt_models_docs_dir,
-    #         "pl_data_dir": pl_data_dir,
-    #         "src_data_dir": study_data_dir,
-    #         # "int_study_data_dir": int_study_data_dir,
-    #         # "trans_study_data_dir": trans_study_data_dir,
-    #         "static_data_dir": static_data_dir,
-    #         # "int_static_data_dir": int_static_data_dir,
-    #         # "tgt_static_data_dir": tgt_static_data_dir,
-    #         # "int_study_yml_path": int_study_yml_path,
-    #     }
+    def generate_static_docs_files(self, int_config, exp_config):
+        '''
+        For each dd specified in a config file, create the dbt 'docs' associated
+        with the models.yml files.
 
-    #     for var, path in paths.items():
-    #         if var.endswith("dir"):
-    #             path.mkdir(parents=True, exist_ok=True)
-    #             logger.debug(f"Path {path} exists")
+        '''
+    
+        # int tables - used in models.yml
 
-    #         self.validate_paths(paths)
 
-    #     return paths
+        self.generate_static_column_descriptions(
+            table_prefix=f"{self.int_table_prefix}",
+            config=int_config,
+            input_dd_dir=self.paths["static_int_metadata_dir"],
+            output_dir=self.paths["pl_int_study_docs_dir"],
+        )
