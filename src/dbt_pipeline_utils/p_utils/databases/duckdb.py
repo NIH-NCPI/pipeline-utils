@@ -66,35 +66,4 @@ class DuckdbSC(DatabaseBC):
     #     '''
     #     pass
 
-    # def generate_dbt_project_yaml(self):
-    #     study_info = {}
 
-    #     for table_id in self.data_dictionary.keys():
-    #         stg_table_id = f"{self.study_id}_stg_{table_id}"
-
-    #         study_info[table_id] = {
-    #             stg_table_id: {
-    #                 "+schema": self.src_schema,
-    #                 "+materialized": "table",
-    #             },
-    #         }
-
-    #     # Correct structure for dbt_project.yml
-    #     dbt_config = {
-    #         "name": self.study_id,
-    #         "version": "1.0.0",
-    #         "profile": self.project_id,
-    #         "model-paths": ["models"],
-    #         "macro-paths": ["macros"],
-    #         "snapshot-paths": ["snapshots"],
-    #         "clean-targets": ["target", "dbt_packages"],
-    #         "models": {
-    #             "+schema": self.src_schema,
-    #             "+materialized": "table",
-    #             **study_info,
-    #         },
-    #     }
-
-    #     filepath = self.paths["dbtp_src_study_dir"] / "dbt_project.yml"
-
-    #     write_file(filepath, dbt_config)

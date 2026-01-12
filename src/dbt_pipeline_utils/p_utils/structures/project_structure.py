@@ -6,9 +6,11 @@ python -m dbt_pipeline_utils.p_utils.structures.project_structure
 """
 
 from dataclasses import dataclass, field
-from typing import Type, Dict, ClassVar, Any
+from typing import Type, Dict, ClassVar
 from pathlib import Path
 import re
+import json
+import subprocess
 import pandas as pd
 from dbt_pipeline_utils import logger
 from dbt_pipeline_utils.p_utils.structures.structure_context import StructureContext
@@ -17,16 +19,9 @@ from dbt_pipeline_utils.p_utils.general import (
     write_file,
     get_existing_yaml,
     normalize_name,
+    shorten_identifier
 )
 from dbt_pipeline_utils.p_utils.common import DD_FORMATS
-
-from typing import Dict, Type, ClassVar
-
-
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict
-from .structure_context import StructureContext
 
 
 @dataclass
@@ -45,17 +40,6 @@ class StructureBC:
         if hasattr(self.context, name):
             return getattr(self.context, name)
         raise AttributeError(name)
-
-    # def __post_init__(self):
-    #     if self.study_config_path is not None:
-    #         self.study_config_dir = Path(self.study_config_path).parent
-
-    #     if self.study_data_dir is not None:
-    #         self.study_data_dir = Path(self.study_data_dir)
-
-    #     self.int_table_prefix = f"{self.study_id}_{self.int_model_prefix}"
-    #     self.int_gen_dd_name = f"{self.table_name}_{self.int_model_prefix}_dd.csv"
-    # self.paths = self.get_paths()
 
     @classmethod
     def register(cls, key: str):
@@ -165,7 +149,7 @@ class StructureBC:
                 enumerations = as_str_or_none(row.get(column_map["enumerations"]))
                 comment = as_str_or_none(row.get(column_map["comment"]))
                 src_variable_name = as_str_or_none(
-                    row.get(column_map["src_variable_name"])
+                    row.get(column_map["src_variable_name"], formatted_variable_name)
                 )
                 tests = as_str_or_none(row.get(column_map["tests"]))
 
@@ -192,8 +176,7 @@ class StructureBC:
     def load_column_data(self, src_dd_path):
         """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
         column_data = {}
-        # import pdb
-        # pdb.set_trace()
+
         src_df = read_file(src_dd_path)
         key = normalize_name(src_dd_path, trailing=False, extension='drop')
         column_data[key] = self.extract_columns(src_df, self.dd_format)
@@ -263,7 +246,8 @@ class StructureBC:
         Ensures dbt doc block names consist of only letters, numbers and underscores, as dbt expects.
         """
         name = normalize_name([table_prefix, table_name, column_name], trailing=False, extension='drop')
-        return name
+        result = shorten_identifier(name)
+        return result
 
     def format_tests(self, tests, col, enums=None):
         """
@@ -449,10 +433,96 @@ class StructureBC:
 
         write_file(filepath, existing, mode="overwrite")
 
-    def generate_study_column_descriptions(
-        self, table_prefix, input_dd_dir, output_dir
+    # def generate_column_descriptions(
+    #     self,
+    #     table_prefix,
+    #     input_dd_dir,
+    #     output_dir,
+    #     *,
+    #     mode: str,
+    #     df_identifiers=None,
+    #     config=None,
+    # ):
+    #     """
+    #     Generates column_descriptions.md for tables.
+
+    #     mode = "study" → iterate self.df_identifiers
+    #     mode = "static" → iterate config.data_dictionary
+    #     """
+
+    #     output_filepath = output_dir / "column_descriptions.md"
+
+    #     if not output_filepath.exists():
+    #         output_filepath.touch()
+
+    #     existing_data = output_filepath.read_text().rstrip()
+
+    #     existing_col_doc_ids = set(
+    #         re.findall(r"\{%\s*docs\s+([\w\d_]+)\s*%\}", existing_data)
+    #     )
+
+    #     new_descriptions = []
+
+    #     if mode == "study":
+    #         items = self.df_identifiers
+
+    #     elif mode == "cdm":
+    #         items = list(config.data_dictionary.values())
+
+    #     else:
+    #         raise ValueError(f"Unsupported mode: {mode}")
+
+    #     for item in items:
+
+    #         if mode == "study":
+    #             dd_filepath = input_dd_dir / self.dd_identifier
+    #             table_name = normalize_name(item, trailing=True, extension="drop")
+
+    #         else:  # static
+    #             dd_filepath = input_dd_dir / item.identifier
+    #             table_name = normalize_name(dd_filepath, trailing=False, extension="drop")
+
+    #         src_table_key = normalize_name(dd_filepath, trailing=False, extension="drop")
+    #         column_data = self.load_column_data(dd_filepath)
+
+    #         for _, col_name_code, col_description, *_ in column_data.get(src_table_key, []):
+    #             col_doc_id = self.generate_doc_block_name(
+    #                 table_name, col_name_code, table_prefix
+    #             )
+
+    #             if col_doc_id in existing_col_doc_ids:
+    #                 continue
+
+    #             block = (
+    #                 f"{{% docs {col_doc_id} %}}\n" f"{col_description}\n" f"{{% enddocs %}}"
+    #             )
+
+    #             new_descriptions.append(block)
+    #             existing_col_doc_ids.add(col_doc_id)
+
+    #     new_data = "\n\n".join(new_descriptions).strip()
+
+    #     if new_data:
+    #         data = existing_data + "\n" + new_data if existing_data else new_data
+    #         write_file(output_filepath, data, mode="overwrite")
+    #     else:
+    #         logger.debug(f"No updates needed: {output_filepath}")
+
+    def generate_column_descriptions(
+        self,
+        table_prefix,
+        input_dd_dir,
+        output_dir,
+        *,
+        mode: str,
+        config=None,
     ):
-        """Generates a separate column_descriptions.md for each DF table in its docs directory."""
+        """
+        Generates column_descriptions.md for tables.
+
+        mode = "study" → iterate self.df_identifiers
+        mode = "cdm" → iterate config.data_dictionary
+        """
 
         output_filepath = output_dir / "column_descriptions.md"
 
@@ -467,29 +537,41 @@ class StructureBC:
 
         new_descriptions = []
 
-        for data_file_name in self.df_identifiers:
+        if mode == "study":
+            items = self.df_identifiers
 
-            dd_filepath = input_dd_dir / self.dd_identifier
-            src_table_key = normalize_name(
-                dd_filepath, trailing=False, extension="drop"
-            )
+        elif mode == "cdm":
+            items = list(config.data_dictionary.values())
+
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
+
+        for table_id in items:
+
+            if mode == "study":
+                dd_filepath = input_dd_dir / self.dd_identifier
+                table_name = normalize_name(table_id, trailing=True, extension="drop")
+
+            else:  # static
+                dd_filepath = input_dd_dir / table_id.identifier
+                table_name = normalize_name(dd_filepath, trailing=False, extension="drop")
+
+            src_table_key = normalize_name(dd_filepath, trailing=False, extension="drop")
             column_data = self.load_column_data(dd_filepath)
-            table_name = normalize_name(data_file_name, trailing=True, extension="drop")
 
             for _, col_name_code, col_description, *_ in column_data.get(src_table_key, []):
                 col_doc_id = self.generate_doc_block_name(
                     table_name, col_name_code, table_prefix
                 )
 
-                # skip if this column doc already exists
                 if col_doc_id in existing_col_doc_ids:
                     continue
 
-                col_desc_block = (
-                    f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}"
+                block = (
+                    f"{{% docs {col_doc_id} %}}\n" f"{col_description}\n" f"{{% enddocs %}}"
                 )
 
-                new_descriptions.append(col_desc_block)
+                new_descriptions.append(block)
                 existing_col_doc_ids.add(col_doc_id)
 
         new_data = "\n\n".join(new_descriptions).strip()
@@ -500,89 +582,73 @@ class StructureBC:
         else:
             logger.debug(f"No updates needed: {output_filepath}")
 
-    def generate_static_column_descriptions(
-        self, table_prefix, config, input_dd_dir, output_dir
-    ):
-        """Generates a separate column_descriptions.md for each DF table in its docs directory."""
+    def generate_run_command(self, operation, model, args=None):
+        """Generates a dbt run command for models or macros with optional arguments."""
 
-        output_filepath = output_dir / "column_descriptions.md"
-
-        if not output_filepath.exists():
-            output_filepath.touch()
-
-        existing_data = output_filepath.read_text().rstrip()
-
-        existing_col_doc_ids = set(
-            re.findall(r"\{%\s*docs\s+([\w\d_]+)\s*%\}", existing_data)
-        )
-
-        new_descriptions = []
-        for key, value in config.data_dictionary.items():
-            dd_filename = value.identifier
-
-            dd_filepath = input_dd_dir / dd_filename
-            src_table_key = normalize_name(
-                dd_filepath, trailing=False, extension="drop"
+        if operation == "macro":
+            all_args = (
+                f"--args '{' '.join(f'\"{k}\": \"{v}\"' for k, v in args.items())}'"
+                if args
+                else ""
             )
-            column_data = self.load_column_data(dd_filepath)
+            op = f"dbt run-operation {model} {all_args}".strip()
 
-            for _, col_name_code, col_description, *_ in column_data.get(
-                src_table_key, []
-            ):
-                col_doc_id = self.generate_doc_block_name(
-                    src_table_key, col_name_code, table_prefix
-                )
+        if operation == "model":
+            all_args = f"--vars '{json.dumps(args)}'" if args else ""
+            op = f"dbt run --select +{model} {all_args}".strip()
 
-                # skip if this column doc already exists
-                if col_doc_id in existing_col_doc_ids:
-                    continue
+        if operation == "test":
+            all_args = f"--vars '{json.dumps(args)}'" if args else ""
+            op = f"dbt test --select +{model} {all_args}".strip()
 
-                col_desc_block = (
-                    f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}"
-                )
+        return op
 
-                new_descriptions.append(col_desc_block)
-                existing_col_doc_ids.add(col_doc_id)
+    def generate_dbt_run_script(self, run_script_dir):
+        """Generates a dbt run Bash script dynamically based on a YAML configuration."""
 
-        new_data = "\n\n".join(new_descriptions).strip()
+        commands_list = [
+            "#!/bin/bash",
+            "dbt clean",
+            'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
+            "dbt seed #--full-refresh",
+        ]
 
-        if new_data:
-            data = existing_data + "\n" + new_data if existing_data else new_data
-            write_file(output_filepath, data, mode="overwrite")
-        else:
-            logger.debug(f"No updates needed: {output_filepath}")
+        int_vars = {}
+        tgt_vars = {}
 
-    # def generate_model_descriptions(self, output_dir):
-    #     """Generates model_descriptions.md using the specified format."""
-    #     model_descriptions = []
+        commands_list.append("# Source tables")
+        for tbl in self.src_prefixed_tables:
+            commands_list.append(self.generate_run_command("model", tbl))
 
-    #     # Group tables by prefix (e.g., "moo_src_", "moo_stg_")
-    #     grouped_tables = {}
-    #     for table_id, table_info in self.data_dictionary.items():
-    #         prefix = table_id.split("_")[0]  # Assumes prefix is the first part of table_id
-    #         grouped_tables.setdefault(prefix, []).append((table_id, table_info))
+        for table_id in self.int_prefixed_tables:
+            int_vars[table_id] = {
+                "source_table": "SRC DATAMODEL HERE",
+                "target_schema": self.int_dbtp_def["+schema"],
+            }
 
-    #     for prefix, tables in grouped_tables.items():
-    #         model_descriptions.append(f"### {prefix.capitalize()} Models\n")
+        for table_id in self.exp_prefixed_tables:
+            tgt_vars[table_id] = {
+                "source_table": table_id,
+                "target_schema": self.exp_dbtp_def['+schema'],
+            }
+        commands_list.append("# Internal tables and tests")
+        for table, args in int_vars.items():
+            commands_list.append(self.generate_run_command("test", table, args))
+            commands_list.append(self.generate_run_command("model", table, args))
 
-    #         for table_id, table_info in tables:
-    #             src_table_id = self.get_src_table_key(table_id)
-    #             src_description = table_info.get(
-    #                 "description", f"Model for {src_table_id}."
-    #             )
-    #             model_descriptions.append(
-    #                 f"{{% docs {src_table_id} %}}\n{src_description}\n{{% enddocs %}}\n"
-    #             )
+        commands_list.append("# Export model run commands")
+        for table, args in tgt_vars.items():
+            commands_list.append(self.generate_run_command("model", table, args))
 
-    #             stg_table_id = f"{self.study_id}_stg_{table_id}"
-    #             stg_description = table_info.get("description", f"Model for {stg_table_id}.")
-    #             model_descriptions.append(f"{{% docs {stg_table_id} %}}\n{stg_description}\n{{% enddocs %}}\n")
+        # Final script content
+        data = "\n".join(commands_list) + "\n"
+        filepath = run_script_dir / f"run_{self.dataset_id}.sh"
 
-    #             data = "\n".join(model_descriptions)
+        # Write the script to a file
+        write_file(filepath, data, mode='create')
 
-    #             filepath = output_dir / "model_descriptions.md"
-
-    #             write_file(filepath, data)
+        # Edit script permissions
+        subprocess.run(["chmod", "+x", filepath], check=True)
 
 
 if __name__ == "__main__":

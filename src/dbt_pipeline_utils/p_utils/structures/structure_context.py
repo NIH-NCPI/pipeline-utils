@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from dbt_pipeline_utils.p_utils.general import normalize_name
 
 
 @dataclass
@@ -12,11 +13,10 @@ class StructureContext:
     Internal storage uses underscore-backed fields.
     """
 
-    # ==========================================================
     # Required fields (constructor args)
-    # ==========================================================
     table_name: str
     df_identifiers: List[str]
+    dataset_id: str
     dd_identifier: str
     dd_format: str
     study_id: str
@@ -24,13 +24,14 @@ class StructureContext:
     db_profile: str
     int_model_name: str
     int_model_prefix: str
+    src_tables: List[str]
+    int_tables: List[str]
+    exp_tables: List[str]
     exp_model_name: str
     exp_model_prefix: str
     study_tables: List[str]
 
-    # ==========================================================
     # Optional / defaulted fields
-    # ==========================================================
     study_config_path: Optional[Path] = None
     study_data_dir: Optional[Path] = None
     pipeline_data_dir: Optional[Path] = None
@@ -39,21 +40,17 @@ class StructureContext:
     int_dbtp_def: Dict[str, Any] = field(default_factory=dict)
     exp_dbtp_def: Dict[str, Any] = field(default_factory=dict)
 
-    # ==========================================================
     # Derived / internal fields
-    # ==========================================================
-
     _src_table_prefix: str = field(init=False, default="")
 
     _int_table_prefix: str = field(init=False, default="")
     _int_gen_dd_name: str = field(init=False, default="")
     _int_stg_additions_name: str = field(init=False, default="")
+    _src_prefixed_tables: List[str] = field(init=False, default="")
 
     _exp_table_prefix: str = field(init=False, default="")
+    _exp_prefixed_tables: List[str] = field(init=False, default="")
 
-    # ----------------------------------------------------------
-    # Lifecycle
-    # ----------------------------------------------------------
     def __post_init__(self):
         # Convert paths to Path objects
         if self.study_config_path:
@@ -63,16 +60,32 @@ class StructureContext:
         if self.pipeline_data_dir:
             self._pipeline_data_dir = Path(self.pipeline_data_dir)
 
-        self._src_table_prefix = f"{self.study_id}_src_"
+        self._src_table_prefix = normalize_name([self.project_id,self.study_id, 'src'], trailing=True, extension='drop')
+        self._src_prefixed_tables = [
+            f"{self._src_table_prefix}{t}" for t in self.src_tables
+        ]
 
-        self._int_table_prefix = f"{self.study_id}_{self.int_model_prefix}"
-        self._exp_table_prefix = f"{self.study_id}_{self.exp_model_prefix}"
-        self._int_gen_dd_name = f"{self.table_name}_stg_dd.csv"
-        self._int_stg_additions_name = f"{self.table_name}_stg_additions_dd.csv"
+        self._int_table_prefix = normalize_name(
+            [self.project_id, self.study_id, self.int_model_prefix],
+            trailing=True,
+            extension="drop",
+        )
+        self._int_gen_dd_name = normalize_name([self.table_name, 'stg_dd.csv'], trailing=False, extension='keep')
+        self._int_stg_additions_name = normalize_name([self.table_name, 'stg_additions_dd.csv'], trailing=False, extension='keep')
+        self._int_prefixed_tables = [
+            f'{self._int_table_prefix}{t}' for t in self.int_tables
+        ]
 
-    # ==========================================================
+        self._exp_table_prefix = normalize_name(
+            [self.project_id, self.study_id, self.exp_model_prefix],
+            trailing=True,
+            extension="drop",
+        )
+        self._exp_prefixed_tables = [
+            f"{self._exp_table_prefix}{t}" for t in self.exp_tables
+        ]
+
     # Properties / getters & setters
-    # ==========================================================
     @property
     def table_name(self) -> str:
         return self._table_name
@@ -84,7 +97,7 @@ class StructureContext:
         self._table_name = value
 
     @property
-    def df_identifiers(self) -> str:
+    def df_identifiers(self) -> List[str]:
         return self._df_identifiers
 
     @df_identifiers.setter
@@ -92,6 +105,16 @@ class StructureContext:
         if not value:
             raise ValueError("df_identifiers cannot be empty")
         self._df_identifiers = value
+
+    @property
+    def dataset_id(self) -> List[str]:
+        return self._dataset_id
+
+    @dataset_id.setter
+    def dataset_id(self, value: str):
+        if not value:
+            raise ValueError("dataset_id cannot be empty")
+        self._dataset_id = value
 
     @property
     def dd_identifier(self) -> str:
@@ -159,7 +182,30 @@ class StructureContext:
     @int_model_prefix.setter
     def int_model_prefix(self, value: str):
         self._int_model_prefix = value
-        # self._recompute_prefixes()
+
+    @property
+    def src_tables(self) -> str:
+        return self._src_tables
+
+    @src_tables.setter
+    def src_tables(self, value: str):
+        self._src_tables = value
+
+    @property
+    def int_tables(self) -> str:
+        return self._int_tables
+
+    @int_tables.setter
+    def int_tables(self, value: str):
+        self._int_tables = value
+
+    @property
+    def exp_tables(self) -> str:
+        return self._exp_tables
+
+    @exp_tables.setter
+    def exp_tables(self, value: str):
+        self._exp_tables = value
 
     @property
     def exp_model_name(self) -> str:
@@ -176,7 +222,6 @@ class StructureContext:
     @exp_model_prefix.setter
     def exp_model_prefix(self, value: str):
         self._exp_model_prefix = value
-        # self._recompute_prefixes()
 
     @property
     def study_tables(self) -> List[str]:
@@ -236,20 +281,18 @@ class StructureContext:
     def exp_dbtp_def(self, value: Dict[str, Any]):
         self._exp_dbtp_def = value or {}
 
-    # ==========================================================
     # Derived / read-only properties
-    # ==========================================================
     @property
     def src_table_prefix(self) -> str:
         return self._src_table_prefix
- 
+
+    @property
+    def src_prefixed_tables(self) -> str:
+        return self._src_prefixed_tables
+
     @property
     def int_table_prefix(self) -> str:
         return self._int_table_prefix
-
-    @property
-    def exp_table_prefix(self) -> str:
-        return self._exp_table_prefix
 
     @property
     def int_gen_dd_name(self) -> str:
@@ -260,12 +303,22 @@ class StructureContext:
         return self._int_stg_additions_name
 
     @property
+    def int_prefixed_tables(self) -> str:
+        return self._int_prefixed_tables
+
+    @property
+    def exp_table_prefix(self) -> str:
+        return self._exp_table_prefix
+
+    @property
+    def exp_prefixed_tables(self) -> str:
+        return self._exp_prefixed_tables
+
+    @property
     def study_config_dir(self) -> Optional[Path]:
         return self._study_config_path.parent if self._study_config_path else None
 
-    # ==========================================================
     # Validation
-    # ==========================================================
     def validate(self) -> None:
         required = {
             "dd_identifier": self._dd_identifier,

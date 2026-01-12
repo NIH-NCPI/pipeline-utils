@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import dbt_pipeline_utils
 from dbt_pipeline_utils import logger
-from dbt_pipeline_utils.p_utils.general import write_file, get_existing_yaml
+from dbt_pipeline_utils.p_utils.general import  normalize_name
 from .project_structure import StructureBC
 from typing import Dict
 
@@ -20,7 +20,7 @@ class AnvilStructureSC(StructureBC):
         pl_profiles = pl_root_dir / "profiles.yml"
         pl_project_dir = pl_root_dir / self.project_id
         pl_catalog_dir = pl_project_dir / "catalog"
-        pl_scripts_dir = pl_project_dir / "scripts"
+        pl_scripts_dir = pl_project_dir  / "scripts"/ self.study_id
 
         pl_sources_dir = pl_catalog_dir / "sources"
         pl_src_study_dir = pl_sources_dir / self.study_id
@@ -42,6 +42,8 @@ class AnvilStructureSC(StructureBC):
         pl_int_dir = pl_catalog_dir / self.int_model_name
         pl_int_models_dir = pl_int_dir / Path("models")
         pl_int_study_dir = pl_int_models_dir / self.study_id
+        pl_int_macros_dir = pl_int_dir / Path("macros")
+        pl_int_macros_study_dir = pl_int_macros_dir / self.study_id
         pl_int_study_docs_dir = pl_int_study_dir / Path("docs")
 
         pl_exp_dir = pl_catalog_dir / self.exp_model_name
@@ -79,6 +81,8 @@ class AnvilStructureSC(StructureBC):
             "pl_int_dir": pl_int_dir,
             "pl_int_models_dir": pl_int_models_dir,
             "pl_int_study_dir": pl_int_study_dir,
+            "pl_int_macros_study_dir": pl_int_macros_study_dir,
+            "pl_int_macros_dir": pl_int_macros_dir,
             "pl_int_study_docs_dir": pl_int_study_docs_dir,
             "pl_exp_dir": pl_exp_dir,
             "pl_exp_docs_dir": pl_exp_docs_dir,
@@ -96,12 +100,7 @@ class AnvilStructureSC(StructureBC):
 
         return paths
 
-    def generate_dbt_project_yaml(self, int_config, exp_config):
-
-        if int_config is None or exp_config is None:
-            raise RuntimeError(
-                "Internal and export configs must be present to generate dbt_project files"
-            )
+    def generate_dbt_project_yaml(self):
 
         src_dir = self.paths["pl_src_study_dir"]
         int_dir = self.paths["pl_int_dir"]
@@ -140,17 +139,17 @@ class AnvilStructureSC(StructureBC):
             src_dir, self.study_tables, self.src_dbtp_def
         )
         self.dbt_project_add_models(
-            int_dir, int_config.int_tables, self.int_dbtp_def
+            int_dir, self.int_prefixed_tables, self.int_dbtp_def
             )
         self.dbt_project_add_models(
-            exp_dir, exp_config.exp_tables, self.exp_dbtp_def
+            exp_dir, self.exp_prefixed_tables, self.exp_dbtp_def
         )
 
     def generate_stg_dds(self):
         input_dd_path = self.paths["study_data_dir"] / self.dd_identifier
 
         output_path = (
-            self.paths["study_data_dir"] / self.study_id / Path(self.int_gen_dd_name)
+            self.paths["study_data_dir"] / Path(self.int_gen_dd_name)
         )
         input_dd_format = self.dd_format
         additions_filepath = (
@@ -184,28 +183,33 @@ class AnvilStructureSC(StructureBC):
             output_dir=self.paths["pl_src_study_model_dir"],
         )
 
-    def generate_study_docs_files(self):
+    def generate_study_desc_files(self):
 
-        # src tables - used in sources.yml
-        self.generate_study_column_descriptions(
-            table_prefix=f"{self.src_table_prefix}",
+        self.generate_column_descriptions(
+            table_prefix=self.src_table_prefix,
             input_dd_dir=self.paths["study_data_dir"],
             output_dir=self.paths["pl_src_study_model_docs_dir"],
+            mode="study",
         )
 
-    def generate_static_docs_files(self, int_config, exp_config):
-        '''
-        For each dd specified in a config file, create the dbt 'docs' associated
-        with the models.yml files.
+    def generate_int_desc_files(self, int_config):
 
-        '''
-    
-        # int tables - used in models.yml
-
-
-        self.generate_static_column_descriptions(
-            table_prefix=f"{self.int_table_prefix}",
-            config=int_config,
+        self.generate_column_descriptions(
+            table_prefix=self.int_table_prefix,
             input_dd_dir=self.paths["static_int_metadata_dir"],
             output_dir=self.paths["pl_int_study_docs_dir"],
+            mode="cdm",
+            config=int_config,
         )
+
+    def generate_exp_desc_files(self, exp_config):
+
+        self.generate_column_descriptions(
+            table_prefix=self.exp_table_prefix,
+            input_dd_dir=self.paths["static_exp_metadata_dir"],
+            output_dir=self.paths["static_exp_model_dir"],
+            mode="cdm",
+            config=exp_config,
+        )
+    def generate_run_script(self):
+        self.generate_dbt_run_script(self.paths["pl_scripts_dir"])

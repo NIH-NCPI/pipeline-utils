@@ -7,6 +7,11 @@ type_mapping = {
     "datetime": "timestamp"
 }
 
+import re
+
+SAFE_CHARS = re.compile(r"[^a-zA-Z0-9_]+")
+MAX_IDENTIFIER_LEN = 60  
+
 # Define mappings for different dictionary formats.
 DD_FORMATS = {
     "src_type1": {

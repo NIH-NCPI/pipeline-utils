@@ -14,6 +14,7 @@ from pathlib import Path
 import hashlib
 # from dbt_pipeline_utils.p_utils..common import *
 from typing import Iterable
+from dbt_pipeline_utils.p_utils.common import MAX_IDENTIFIER_LEN, SAFE_CHARS
 
 from dbt_pipeline_utils import logger
 
@@ -164,8 +165,6 @@ def copy_directory(src_dir, dest_dir):
             logger.debug(f"Copied '{src_dir}' to '{dest_dir}'")
 
 
-SAFE_CHARS = re.compile(r"[^a-zA-Z0-9_]+")
-MAX_IDENTIFIER_LEN = 60
 
 def clean_string(input: str) -> str:
 
@@ -276,22 +275,15 @@ def normalize_name(
     >>> normalize_name(['project', None, 'table!24601', 'exp.csv'], extension='keep')
     'project_table_24601_exp.csv'
 
-    >>> # Long values are shortened deterministically
-    >>> long_parts = ['a' * 40, 'b' * 40]
-    >>> out = normalize_name(long_parts)
-    >>> len(out) <= 60
-    True
     """
 
     if isinstance(input, list):
         input = "_".join(str(i) for i in input)
 
-    normalized = normalize_string(input, extension=extension)
+    result = normalize_string(input, extension=extension)
 
-    if trailing and not normalized.endswith("_"):
-        normalized += "_"
-
-    result = shorten_identifier(normalized, MAX_IDENTIFIER_LEN)
+    if trailing and not result.endswith("_"):
+        result += "_"
 
     return result
 

@@ -1,13 +1,48 @@
 from jinja2 import Template
-from typing import Type, Dict, ClassVar
-from dataclasses import dataclass
+from typing import Type, Dict, ClassVar, Any, List
+from pathlib import Path
+from dbt_pipeline_utils import logger
+from dbt_pipeline_utils.p_utils.databases.database_context import DatabaseContext
+from dataclasses import dataclass, field
+from dbt_pipeline_utils.p_utils.common import type_mapping
+from dbt_pipeline_utils.p_utils.general import normalize_name, write_file
 
 
 @dataclass
 class DatabaseBC:
-    pipeline_db: str
+    """
+    Base class for database-related operations.
+    """
 
+    context: DatabaseContext
+
+    # Pre-initialized attributes for convenience
+    paths: Dict[str, Path] = field(init=False)
+    src_table_prefix: str = field(init=False)
+    int_table_prefix: str = field(init=False)
+    exp_table_prefix: str = field(init=False)
+    df_identifiers: List[str] = field(init=False)
+    dd_identifier: str = field(init=False)
+    study_id: str = field(init=False)
+    project_id: str = field(init=False)
+    table_name: str = field(init=False)
+
+    # Registry for subclasses
     _REGISTRY: ClassVar[Dict[str, Type["DatabaseBC"]]] = {}
+
+    def __post_init__(self):
+        """
+        Pre-initialize frequently accessed attributes from the context.
+        """
+        self.paths = self.context.paths
+        self.src_table_prefix = self.context.src_table_prefix
+        self.int_table_prefix = self.context.int_table_prefix
+        self.exp_table_prefix = self.context.exp_table_prefix
+        self.df_identifiers = self.context.df_identifiers
+        self.dd_identifier = self.context.dd_identifier
+        self.study_id = self.context.study_id
+        self.project_id = self.context.project_id
+        self.table_name = self.context.table_name
 
     @classmethod
     def register(cls, key: str):
@@ -18,42 +53,16 @@ class DatabaseBC:
         return decorator
 
     @classmethod
-    def define_db(cls, pipeline_db: str) -> "DatabaseBC":
-        try:
-            return cls._REGISTRY[pipeline_db](pipeline_db)
-        except KeyError:
-            raise ValueError(f"Unsupported pipeline_db: {pipeline_db}")
+    def define_db(cls, database_key: str, *, context: DatabaseContext) -> "DatabaseBC":
+        if database_key not in cls._REGISTRY:
+            raise KeyError(f"No structure registered for key '{database_key}'")
+        return cls._REGISTRY[database_key](context=context)
 
-    #              , ftd_config, table_name, table_info, paths, file):
-    #     self.study_config = study_config
-    #     self.ftd_config = ftd_config
-    #     self.table_name = table_name
-    #     self.table_info = table_info
-    #     self.paths = paths
-    #     self.profiles_path = paths.get("profiles_path_home")
-    #     self.file = file
-    #     self.profile = ""
-    #     self.src_schema = ""
-    #     self.src_data_csv =  ""
-
-    #     study_details = {
-    #         "study_id": self.study_config["study_id"],
-    #         "project_id": self.study_config["project_id"],
-    #         "pipeline_db": self.study_config["pipeline_db"],
-    #         "data_dictionary" : self.study_config.get("data_dictionary", {}),
-    #         "data_files" : self.study_config.get("data_files", {}),
-    #         "ftd_dd": self.ftd_config.get("data_dictionary", {})
-    #     }
-
-    #     for key, value in study_details.items():
-    #         setattr(self, key, value)
-
-    #     self.new_table_name = Path(self.get_src_table_key(self.table_name)).stem
-
-    #     # Make the profile_keys into attributes
-    #     pipeline_db_vars = self.get_db_vars()
-    #     for key, value in pipeline_db_vars.items():
-    #         setattr(self, key, value)
+    def load_column_data(self, dd_filepath: Path) -> Dict[str, Any]:
+        """
+        Delegate load_column_data to StructureBC.
+        """
+        return self.context.structure.load_column_data(dd_filepath)
 
     # def get_db_vars(self):
     #     """Loads specific key-value pairs from a YAML file based on the profile type."""
@@ -66,48 +75,200 @@ class DatabaseBC:
 
     #     return env_vars
 
-    # def extract_table_schema(self):
-    #     """Extracts column definitions from the data dictionary CSV."""
+    def generate_study_sql(
+        self,
+        dd_filepath,
+        source_tablename
+        ):
+        """Generates staging SQL files dynamically for each table based on the data dictionary."""
 
-    #     full_file_path = self.paths['src_data_dir']  / Path(f'{self.src_data_csv}')
-    #     dd = read_file(full_file_path)
-    #     # Use extract_columns to get structured column data
-    #     column_data_list = self.extract_columns(dd, self.table_info['format'])
+        src_table = normalize_name(source_tablename, trailing=False, extension="drop")
 
-    #     column_definitions = []
-    #     for variable_name, formatted_name, _, data_type, _ in column_data_list:
-    #         sql_type = type_mapping.get(data_type, "text")
-    #         column_definitions.append(f'"{variable_name}" {sql_type}')
+        src_table_key = normalize_name(
+            dd_filepath, trailing=False, extension="drop"
+        )
+        column_data = self.load_column_data(dd_filepath)
 
-    #     return column_definitions, self.src_data_csv
+        column_definitions = []
+        id_list = []
+        for col_name, column_name_code, _, col_data_type, *_ in column_data.get(
+            src_table_key, []
+        ):
+            if column_name_code.endswith("_id"):
+                id_list.append(column_name_code)
+            sql_type = type_mapping.get(col_data_type, "text")
+            column_definitions.append(
+                f'"{col_name}"::{sql_type} as "{column_name_code}"'
+            )
 
-    # def get_src_ddict_path(self, table_info):
-    #     src_dd_path = self.paths['src_data_dir']
+        sql_content = f"""
+with source as (
+select 
+{",\n       ".join(column_definitions)}
+from {{{{ source({self.study_id}, {src_table}) }}}}
+)
 
-    #     if table_info.get("import_type") == 'synapse':
-    #         ddict = table_info.get("src_file_id")
+select 
+ROW_NUMBER() OVER () AS {self.project_id}_index,
+source.*
+from source
+"""
+        return sql_content.strip()
 
-    #     if table_info.get("import_type") == 'pg':
-    #         ddict = table_info.get("identifier")
+    def generate_cdm_sql(self, dd_filepath, stage):
 
-    #     if table_info.get("import_type") == 'duckdb':
-    #         ddict = table_info.get("identifier")
+        src_table_key = normalize_name(dd_filepath, trailing=False, extension="drop")
+        column_data = self.load_column_data(dd_filepath)
 
-    #     if table_info.get("import_type") not in ['pg', 'duckdb', 'synapse']:
-    #         logger.error(f"{table_info.get('import_type')} is not valid")
+        column_definitions = []
 
-    #     return src_dd_path / Path(f"{ddict}"), ddict
+        for (
+            col_name,
+            f_col_name,
+            _,
+            col_data_type,
+            _,
+            comment,
+            src_var_name,
+            _,
+        ) in column_data.get(src_table_key, []):
+            sql_type = type_mapping.get(col_data_type, "text")
 
-    # def get_join_conditions(self, current_table):
+            src_col = src_var_name
+            if stage == 'int':
+                if (comment and "Foreign Key:" in comment) or src_var_name == "id":
+                    src_col = f"  {{{{ generate_global_id(prefix='',descriptor=[''], study_id='{self.study_id}') }}}}"
+                column_definitions.append(f'{src_col}::{sql_type} as "{f_col_name}"')
+            elif stage == "exp":
+                column_definitions.append(f'{src_col}::{sql_type} as "{col_name}"')
 
-    #     join_cols = self.data_files.get(current_table, {}).get("join_cols", {})
+        sql_content = f"""select 
+    {",\n    ".join(column_definitions)}
+    from {{{{ ref(source_table) }}}}
+"""
 
-    #     for join_table, left_column in join_cols.items():
-    #         # Get the right column from the join_table's join_cols (pointing back to current_table)
-    #         right_column = self.data_files.get(join_table, {}).get("join_cols", {}).get(current_table)
+        return sql_content.strip()
 
-    #         if right_column:
-    #             # join_table.right_column = current_table.left_column
-    #             return f"{join_table}.{right_column} = {current_table}.{left_column}"
+    def generate_int_macro_model(self, macro_name):
 
-    #     return ''
+        content = f"""
+
+{{{{ config(schema=var('target_schema')) }}}}
+
+{{-% set source_table = (var('source_table') | default(none)) -%}}
+
+{{-% if source_table is not none -%}}
+    {{-% do log("Using source_table: " ~ source_table, info=True) -%}}
+    {{{{ {macro_name}(source_table) }}}}
+{{% else %}}
+    {{-% do log("Warning source_table: " ~ source_table, info=True) -%}}
+{{-% endif -%}}
+        """
+
+        return content.strip()
+
+    def convert_to_model(self, sql_content):
+        return f"""{{{{ config(materialized='table') }}}}
+
+    {sql_content}
+    """
+
+    def convert_to_macro(self, filename, sql_content, params):
+        return f"""{{% macro {filename}({params}) %}}
+    {sql_content}
+{{%- endmacro %}}
+    """
+
+    def generate_study_sql_files(self):
+
+        for src_file in self.df_identifiers:
+
+            # generate sql
+            sql_content = self.generate_study_sql(
+                dd_filepath=self.paths["study_data_dir"] / self.dd_identifier,
+                source_tablename=src_file,
+            )
+
+            model_content = self.convert_to_model(sql_content)
+
+            # generate the output file. SQL for study models.
+            new_model_name = normalize_name(
+            [self.src_table_prefix, src_file], trailing=False, extension="drop"
+        )
+
+            gen_model_filepath = (
+                self.paths["pl_src_study_model_dir"]
+                / self.table_name
+                / f"{new_model_name}.sql"
+            )
+
+            # Will not overwrite an existing file.
+            write_file(gen_model_filepath, model_content, mode="create")
+
+    def generate_int_macro_model_files(self, int_config):
+
+        for tablename, info in list(int_config.data_dictionary.items()):
+
+            dd_filepath = self.paths["static_int_metadata_dir"] / info.identifier
+
+            sql_content = self.generate_cdm_sql(dd_filepath=dd_filepath, stage="int")
+
+            new_table = normalize_name(
+                ["transform", self.int_table_prefix, tablename],
+                trailing=False,
+                extension="drop"
+            )
+            macro_content = self.convert_to_macro(new_table, sql_content, params='source_table')
+
+            gen_macro_filepath = self.paths["pl_int_macros_study_dir"] / f"{new_table}.sql"
+
+            # Will not overwrite an existing file.
+            write_file(gen_macro_filepath, macro_content, mode="create")
+
+            # Generate the model files to trigger the macros
+            model_content = self.generate_int_macro_model(new_table)
+            model_filename = normalize_name(
+                [self.int_table_prefix, tablename],
+                trailing=False,
+                extension="drop",
+            )
+            gen_model_filepath = self.paths["pl_int_study_dir"] / f"{model_filename}.sql"
+
+            write_file(gen_model_filepath, model_content, mode="create")
+
+    def generate_exp_macro_model_files(self, exp_config):
+
+        for tablename, info in list(exp_config.data_dictionary.items()):
+
+            dd_filepath = self.paths["static_exp_metadata_dir"] / info.identifier
+
+            sql_content = self.generate_cdm_sql(dd_filepath=dd_filepath, stage="exp")
+
+            new_table = normalize_name(
+                ["transform", tablename],
+                trailing=False,
+                extension="drop",
+            )
+            macro_content = self.convert_to_macro(
+                new_table, sql_content, params="source_table"
+            )
+
+            gen_macro_filepath = (
+                self.paths["static_exp_model_dir"] / f"macros/{new_table}.sql"
+            )
+
+            # Will not overwrite an existing file.
+            write_file(gen_macro_filepath, macro_content, mode="create")
+
+            # Generate the model files to trigger the macros
+            model_content = self.generate_int_macro_model(new_table)
+            model_filename = normalize_name(
+                [self.exp_table_prefix, tablename],
+                trailing=False,
+                extension="drop",
+            )
+            gen_model_filepath = (
+                self.paths["static_exp_model_dir"] / f"models/{model_filename}.sql"
+            )
+
+            write_file(gen_model_filepath, model_content, mode="create")

@@ -52,12 +52,13 @@ class StudyDataDictionaryConfig:
 class StudyDataFileConfig:
     identifiers: List[str]
     import_type: str
-    join_cols: Dict[str, str]
-
+    dataset_id: str
+    consent_id: str
 
 @dataclass(frozen=True)
 class StudyConfig:
     study_tables: list[str]
+    src_tables: list[str]
     pipeline: StudyPipelineConfig
     study: StudyStudyConfig
     dbt_proj_config: Dict[str, StudyDbtProjectDefaults]
@@ -68,6 +69,11 @@ class StudyConfig:
     def from_dict(cls, raw: dict) -> "StudyConfig":
         return cls(
             study_tables=list(raw["data_file"].keys()),
+            src_tables=[
+                item
+                for table in raw["data_file"].values()
+                for item in table["identifier"]
+            ],
             pipeline=StudyPipelineConfig(
                 db=raw["pipeline"]["db"],
                 structure=raw["pipeline"]["structure"],
@@ -85,7 +91,7 @@ class StudyConfig:
                 name: StudyDbtProjectDefaults(
                     schema=cfg.get("schema"),
                     materialized=cfg.get("materialized"),
-                    vars=cfg.get("vars")
+                    vars=cfg.get("vars"),
                 )
                 for name, cfg in raw["dbt_project"].items()
             },
@@ -93,7 +99,8 @@ class StudyConfig:
                 name: StudyDataFileConfig(
                     identifiers=cfg["identifier"],
                     import_type=cfg["import_type"],
-                    join_cols=cfg["join_cols"],
+                    dataset_id=cfg["dataset_id"],
+                    consent_id=cfg["consent_id"],
                 )
                 for name, cfg in raw["data_file"].items()
             },
@@ -133,17 +140,23 @@ class InternalConfig:
             name: InternalDataDictionary(
                 identifier=Path(cfg["identifier"]),
                 int_dd_identifier=Path(
-                    normalize_name([model_prefix, '_', cfg["identifier"]], trailing=False, extension='keep')
+                    normalize_name([model_prefix, cfg["identifier"]], trailing=False, extension='keep')
                 ),
             )
             for name, cfg in raw["data_dictionary"].items()
         }
 
+        int_tables = [
+            normalize_name(
+                str(v.identifier).replace("-dd", ""), trailing=False, extension="drop"
+            )
+            for v in data_dict.values()
+        ]
         return cls(
             model_name=model_name,
             model_prefix=model_prefix,
             data_dictionary=data_dict,
-            int_tables=[str(v.int_dd_identifier.stem) for v in data_dict.values()],
+            int_tables=int_tables,
         )
 
 
@@ -175,7 +188,12 @@ class ExportConfig:
                 ),
             )
 
-        exp_tables = [str(v.exp_dd_identifier.stem) for v in data_dict.values()]
+        exp_tables = [
+            normalize_name(
+                str(v.identifier).replace("-dd", ""), trailing=False, extension="drop"
+            )
+            for v in data_dict.values()
+        ]
 
         return cls(
             model_name=model_name,

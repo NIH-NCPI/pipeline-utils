@@ -17,12 +17,7 @@ def main():
         required=True,
         help="Path to {study}_study.yaml from root dir. Example 'data/{study_id}/{study_id}_study.yaml'",
     )
-    # parser.add_argument(
-    #     "-i",
-    #     "--int_model_id",
-    #     required=True,
-    #     help="",
-    # )
+
 
     args = parser.parse_args()
 
@@ -39,16 +34,20 @@ def main():
 
     any_obj = next(iter(pipeline_objects.values()))
 
-    any_obj.structure.generate_dbt_project_yaml(
-        any_obj.int_config,
-        any_obj.exp_config,
-    )
+    any_obj.structure.generate_dbt_project_yaml()
 
     any_obj.structure.generate_models_yml_files(
         any_obj.int_config,
         any_obj.exp_config
     )
-    any_obj.structure.generate_static_docs_files(any_obj.int_config, any_obj.exp_config)
+    any_obj.structure.generate_int_desc_files(any_obj.int_config)
+    any_obj.structure.generate_exp_desc_files(any_obj.exp_config)
+
+    any_obj.database.generate_int_macro_model_files(any_obj.int_config)
+
+    any_obj.database.generate_exp_macro_model_files(any_obj.exp_config)
+
+
 
     for table_name, obj in pipeline_objects.items():
         logger.info(f"\n\n\n{table_name.upper()}:")
@@ -58,27 +57,12 @@ def main():
 
         obj.structure.generate_sources_yml_files()
 
-        obj.structure.generate_study_docs_files()
+        obj.structure.generate_study_desc_files()
 
-    # df_obj.generate_model_descriptions(df_obj.paths["dbtp_src_study_model_docs_dir"])
+        obj.database.generate_study_sql_files()
 
-    # # TODO we may not need this one for duckdb passing
-    # df_obj.generate_src_sql_files(df_obj.paths["dbtp_src_study_model_dir"])
+        obj.structure.generate_run_script()
 
-    # df_obj.generate_stg_sql_files(
-    #     column_data,
-    #     df_obj.paths["dbtp_src_study_model_dir"]
-    # )
-
-    # generate_model_docs(intermediate_obj)
-
-    # generate_int_model_docs(df_obj)
-
-    # generate_basic_dbt_project_yml(df_obj.paths["dbtp_catalog_dir"], "catalog", df_obj.pipeline_db)
-
-    # generate_tgt_model_docs(df_obj)
-
-    # generate_run_script(df_obj)
 
     # logger.info(f"REMINDER: Update {self.tgt_id} dbt_project.yml.")
     # logger.info("REMINDER: Check the imports rootdir/packages.yml.")

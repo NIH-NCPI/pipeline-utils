@@ -1,6 +1,0 @@
-# Will automatically ignore any dirs not specified below
-*
-
-!.gitignore
-!refs
-!refs/*
