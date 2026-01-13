@@ -67,7 +67,9 @@ class StudyConfig:
 
     @classmethod
     def from_dict(cls, raw: dict) -> "StudyConfig":
+
         return cls(
+
             study_tables=list(raw["data_file"].keys()),
             src_tables=[
                 item

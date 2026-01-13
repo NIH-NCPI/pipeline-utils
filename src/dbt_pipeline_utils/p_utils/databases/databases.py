@@ -197,7 +197,7 @@ from source
         )
 
             gen_model_filepath = (
-                self.paths["pl_src_study_model_dir"]
+                self.paths["pl_proj_study_dir"]
                 / self.table_name
                 / f"{new_model_name}.sql"
             )
@@ -211,28 +211,15 @@ from source
 
             dd_filepath = self.paths["static_int_metadata_dir"] / info.identifier
 
-            sql_content = self.generate_cdm_sql(dd_filepath=dd_filepath, stage="int")
-
-            new_table = normalize_name(
-                ["transform", self.int_table_prefix, tablename],
-                trailing=False,
-                extension="drop"
-            )
-            macro_content = self.convert_to_macro(new_table, sql_content, params='source_table')
-
-            gen_macro_filepath = self.paths["pl_int_macros_study_dir"] / f"{new_table}.sql"
-
-            # Will not overwrite an existing file.
-            write_file(gen_macro_filepath, macro_content, mode="create")
+            model_content = self.generate_cdm_sql(dd_filepath=dd_filepath, stage="int")
 
             # Generate the model files to trigger the macros
-            model_content = self.generate_int_macro_model(new_table)
             model_filename = normalize_name(
                 [self.int_table_prefix, tablename],
                 trailing=False,
                 extension="drop",
             )
-            gen_model_filepath = self.paths["pl_int_study_dir"] / f"{model_filename}.sql"
+            gen_model_filepath = self.paths["pl_sp_int_dir"] / f"{model_filename}.sql"
 
             write_file(gen_model_filepath, model_content, mode="create")
 

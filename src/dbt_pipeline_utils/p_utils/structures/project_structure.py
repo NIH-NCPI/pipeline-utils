@@ -133,9 +133,12 @@ class StructureBC:
 
         column_map = DD_FORMATS[dd_format]  # Define dd column expectations
         column_data_list = []
-
-        df = df.astype("string").where(pd.notna(df), None)
-
+        # import pdb
+        # pdb.set_trace()
+        if df is not None:
+            df = df.astype("string").where(pd.notna(df), None)
+        else:
+            logger.error('Fail test')
         def as_str_or_none(v):
             return None if v is None or pd.isna(v) else str(v)
 
