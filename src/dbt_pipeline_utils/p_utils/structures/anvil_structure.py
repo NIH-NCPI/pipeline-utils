@@ -63,6 +63,7 @@ class AnvilStructureSC(StructureBC):
         )
         static_exp_model_dir = static_export_dir / self.exp_model_name
 
+
         paths = {
             "pl_profiles": pl_profiles,
             "home_profiles": home_profiles,
@@ -151,7 +152,7 @@ class AnvilStructureSC(StructureBC):
         output_path = (
             self.paths["study_data_dir"] / Path(self.int_gen_dd_name)
         )
-        input_dd_format = self.dd_format
+        input_dd_format = self.int_format
         additions_filepath = (
             input_dd_path
             / self.paths["static_int_additions_dir"]
@@ -213,3 +214,4 @@ class AnvilStructureSC(StructureBC):
         )
     def generate_run_script(self):
         self.generate_dbt_run_script(self.paths["pl_scripts_dir"])
+

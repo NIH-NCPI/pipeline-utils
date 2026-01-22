@@ -19,28 +19,33 @@ from dbt_pipeline_utils.p_utils.common import MAX_IDENTIFIER_LEN, SAFE_CHARS
 from dbt_pipeline_utils import logger
 
 
+
 def read_file(filepath):
-    if not os.path.exists(filepath):
-        logger.warning(f"File does not exist: {filepath}")
-        return
+    path = Path(filepath)
+
+    if not path.exists():
+        logger.warning(f"File does not exist: {path}")
+        raise FileNotFoundError(f"File does not exist: {path}")
 
     file_handlers = {
-        ".yaml": lambda: yaml.safe_load(open(filepath, "r")),
-        ".yml": lambda: yaml.safe_load(open(filepath, "r")),
-        ".csv": lambda: pd.read_csv(filepath, header=0, dtype="string"),
-        ".xlsx": lambda: pd.read_excel(filepath, header=0),
-        ".sql": Path(filepath).read_text
+        ".yaml": lambda: yaml.safe_load(path.read_text(encoding="utf-8")),
+        ".yml":  lambda: yaml.safe_load(path.read_text(encoding="utf-8")),
+        ".csv":  lambda: pd.read_csv(path, header=0, dtype="string"),
+        ".xlsx": lambda: pd.read_excel(path, header=0),
+        ".sql":  lambda: path.read_text(encoding="utf-8"),
+        ".md":   lambda: path.read_text(encoding="utf-8"),
     }
 
-    file_ext = os.path.splitext(filepath)[-1].lower()
+    file_ext = path.suffix.lower()
 
     if file_ext not in file_handlers:
         raise ValueError(f"Unsupported file type: {file_ext}")
 
-    logger.debug(f"Reading {file_ext} from file: {filepath}")
+    logger.debug(f"Reading {file_ext} from file: {path}")
+
     data = file_handlers[file_ext]()
 
-    logger.debug(f"Read {filepath} successful")
+    logger.debug(f"Read {path} successful")
     return data
 
 

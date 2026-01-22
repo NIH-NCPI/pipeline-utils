@@ -1,4 +1,4 @@
-from .duckdb import DuckdbSC
-from .postgres import PostgresSC
+# from .duckdb import DuckdbSC
+# from .postgres import PostgresSC
 
-__all__ = ["DuckdbSC", "PostgresSC"]
+# __all__ = ["DuckdbSC", "PostgresSC"]

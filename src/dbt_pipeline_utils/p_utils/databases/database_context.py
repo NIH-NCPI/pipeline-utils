@@ -28,6 +28,9 @@ class DatabaseContext:
     _study_id: str = field(init=False)
     _project_id: str = field(init=False)
     _table_name: str = field(init=False)
+    _src_model_type: str = field(init=False)
+    _int_model_type: str = field(init=False)
+    _exp_model_type: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize fields based on the StructureBC instance."""
@@ -44,6 +47,11 @@ class DatabaseContext:
         self._study_id = self.structure.study_id
         self._project_id = self.structure.project_id
         self._table_name = self.structure.table_name
+
+        self._src_model_type = self.structure.src_model_type
+        self._int_model_type = self.structure.int_model_type
+        self._exp_model_type = self.structure.exp_model_type
+
 
     # Properties to expose private fields
     @property
@@ -77,6 +85,18 @@ class DatabaseContext:
     @property
     def table_name(self) -> str:
         return self._table_name
+
+    @property
+    def src_model_type(self) -> str:
+        return self._src_model_type
+
+    @property
+    def int_model_type(self) -> str:
+        return self._int_model_type
+
+    @property
+    def exp_model_type(self) -> str:
+        return self._exp_model_type
 
     #     @table_name.setter
     #     def table_name(self, value: str):

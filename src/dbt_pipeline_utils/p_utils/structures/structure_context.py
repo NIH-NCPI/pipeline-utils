@@ -24,12 +24,17 @@ class StructureContext:
     db_profile: str
     int_model_name: str
     int_model_prefix: str
+    int_format: str
     src_tables: List[str]
     int_tables: List[str]
     exp_tables: List[str]
     exp_model_name: str
     exp_model_prefix: str
+    exp_format: str
     study_tables: List[str]
+    src_model_type: str
+    int_model_type: str
+    exp_model_type: str
 
     # Optional / defaulted fields
     study_config_path: Optional[Path] = None
@@ -66,7 +71,7 @@ class StructureContext:
         ]
 
         self._int_table_prefix = normalize_name(
-            [self.project_id, self.study_id, self.int_model_prefix],
+            self.int_model_prefix,
             trailing=True,
             extension="drop",
         )
@@ -77,7 +82,7 @@ class StructureContext:
         ]
 
         self._exp_table_prefix = normalize_name(
-            [self.project_id, self.study_id, self.exp_model_prefix],
+            self.exp_model_prefix,
             trailing=True,
             extension="drop",
         )
@@ -184,6 +189,14 @@ class StructureContext:
         self._int_model_prefix = value
 
     @property
+    def int_format(self) -> str:
+        return self._int_format
+
+    @int_format.setter
+    def int_format(self, value: str):
+        self._int_format = value
+
+    @property
     def src_tables(self) -> str:
         return self._src_tables
 
@@ -224,6 +237,14 @@ class StructureContext:
         self._exp_model_prefix = value
 
     @property
+    def exp_format(self) -> str:
+        return self._exp_format
+
+    @exp_format.setter
+    def exp_format(self, value: str):
+        self._exp_format = value
+
+    @property
     def study_tables(self) -> List[str]:
         return self._study_tables
 
@@ -232,6 +253,29 @@ class StructureContext:
         if not isinstance(value, list):
             raise TypeError("study_tables must be a list")
         self._study_tables = value
+    @property
+    def src_model_type(self) -> str:
+        return self._src_model_type
+
+    @src_model_type.setter
+    def src_model_type(self, value: str):
+        self._src_model_type = value
+
+    @property
+    def int_model_type(self) -> str:
+        return self._int_model_type
+
+    @int_model_type.setter
+    def int_model_type(self, value: str):
+        self._int_model_type = value
+
+    @property
+    def exp_model_type(self) -> str:
+        return self._exp_model_type
+
+    @exp_model_type.setter
+    def exp_model_type(self, value: str):
+        self._exp_model_type = value
 
     @property
     def study_config_path(self) -> Optional[Path]:

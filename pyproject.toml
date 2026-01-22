@@ -16,8 +16,7 @@ requires-python = ">3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dependencies = ["synapseclient",
-                "rich"]
+dependencies = ["rich"]
 
 dynamic = ["version"]
 
@@ -29,4 +28,4 @@ where = ["src"]  # list of folders that contain the packages (["."] by default)
 
 [project.scripts]
 generate_model_docs = "dbt_pipeline_utils.p_utils.trigger_generation:main"
-import_csv_data = "dbt_pipeline_utils.p_utils.process_study:main"
+import_data = "dbt_pipeline_utils.p_utils.trigger_import:main"

@@ -6,9 +6,6 @@ from dbt_pipeline_utils.p_utils.configs import StudyConfig, InternalConfig, Expo
 
 from dbt_pipeline_utils.p_utils.structures.project_structure import StructureBC
 from dbt_pipeline_utils.p_utils.structures.structure_context import StructureContext
-from dbt_pipeline_utils.p_utils.databases.databases import DatabaseBC
-from dbt_pipeline_utils.p_utils.databases.databases import DatabaseContext
-
 
 @dataclass
 class PipelineObject:
@@ -22,6 +19,9 @@ class PipelineObject:
     pipeline_data_dir: Path
     pipeline_db: str
     int_model_name: str
+    src_model_type: str
+    int_model_type: str
+    exp_model_type: str
     study_tables: list[str]
     src_tables: list[str]
 
@@ -47,7 +47,6 @@ class PipelineObject:
     dd_format: str
 
     # late-bound
-    database: DatabaseBC = field(init=False)
     structure: StructureBC = field(init=False)
     paths: Dict[str, Path] = field(init=False)
 
@@ -79,10 +78,15 @@ class PipelineObject:
             int_model_name=self.int_config.model_name,
             int_model_prefix=self.int_config.model_prefix,
             int_tables=self.int_config.int_tables,
+            int_format=self.int_config.int_format,
             exp_tables=self.exp_config.exp_tables,
             exp_model_name=self.exp_config.model_name,
             exp_model_prefix=self.exp_config.model_prefix,
+            exp_format=self.exp_config.exp_format,
             study_tables=self.study_tables,
+            src_model_type=self.src_model_type,
+            int_model_type=self.int_model_type,
+            exp_model_type=self.exp_model_type,
             src_tables=self.src_tables,
             study_config_path=self.study_config_path,
             study_data_dir=self.study_data_dir,
@@ -97,21 +101,16 @@ class PipelineObject:
             context=s_context,
         )
 
-        d_context = DatabaseContext(structure=self.structure)
         self.paths = self.structure.get_paths()
 
-        self.database = DatabaseBC.define_db(
-            self.database_key,
-            context=d_context,
-        )
 
-    def load_internal_config(self) -> None:
+
+    def load_internal_config(self, static_dir: Path) -> None:
         """
         Load a secondary YAML config once paths are initialized.
         """
         config_path = (
-            Path.cwd()
-            / f"data/static/common_data_models/internal/metadata/{self.int_model_name}/{self.int_model_name}_study.yaml"
+            static_dir / f"static/common_data_models/internal/metadata/{self.int_model_name}/{self.int_model_name}_study.yaml"
         )
         if not config_path.exists():
             raise FileNotFoundError(f"Config not found: {config_path}")
@@ -119,13 +118,12 @@ class PipelineObject:
         raw_config = read_file(config_path)
         self.int_config = InternalConfig.from_dict(raw_config)
 
-    def load_export_config(self) -> None:
+    def load_export_config(self, static_dir: Path) -> None:
         """
         Load a secondary YAML config once paths are initialized.
         """
         config_path = (
-            Path.cwd()
-            / f"data/static/common_data_models/export/metadata/{self.exp_model_name}/{self.exp_model_name}_study.yaml"
+            static_dir / f"static/common_data_models/export/metadata/{self.exp_model_name}/{self.exp_model_name}_study.yaml"
         )
 
         if not config_path.exists():
@@ -135,7 +133,7 @@ class PipelineObject:
         self.exp_config = ExportConfig.from_dict(raw_config)
 
 
-def build_pipeline_objects(
+def build_pipeline_objects( static_dir: Path,
     study_config: StudyConfig, study_config_path: Path
 ) -> dict[str, PipelineObject]:
 
@@ -163,6 +161,9 @@ def build_pipeline_objects(
             pipeline_db=study_config.pipeline.db,
             study_data_dir=Path(study_config.study.study_data_dir),
             int_model_name=study_config.pipeline.int_model_name,
+            src_model_type=study_config.pipeline.src_model_type,
+            int_model_type=study_config.pipeline.int_model_type,
+            exp_model_type=study_config.pipeline.exp_model_type,
             study_tables=study_config.study_tables,
             src_tables=study_config.src_tables,
             src_dbtp_def=study_config.dbt_proj_config["src"].dbt_dict(),
@@ -172,8 +173,8 @@ def build_pipeline_objects(
 
     any_po = next(iter(pipeline_objects.values()))
 
-    any_po.load_internal_config()
-    any_po.load_export_config()
+    any_po.load_internal_config(static_dir)
+    any_po.load_export_config(static_dir)
 
     for po in pipeline_objects.values():
         po.int_config = any_po.int_config

@@ -26,7 +26,6 @@ DD_FORMATS = {
         "comment": None,
         "src_variable_name": "src_variable_name",  # Utils generated, for stg dds. Not from data source.
     },
-    # Generated/intermediate pipeline dds, will follow the same format (pipeline_format)
     "ftd_dd": {
         "variable_name": "variable_name",
         "formatted_variable_name": "variable_name", 

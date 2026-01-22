@@ -11,6 +11,9 @@ class StudyPipelineConfig:
     pipeline_data_dir: str
     int_model_name: str
     exp_model_name: str
+    src_model_type: str
+    int_model_type: str
+    exp_model_type: str
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,9 @@ class StudyConfig:
                 pipeline_data_dir=raw["pipeline"]["data_dir"],
                 int_model_name=raw["pipeline"]["int_model_name"],
                 exp_model_name=raw["pipeline"]["exp_model_name"],
+                src_model_type=raw["pipeline"]["model_type"]['src'],
+                int_model_type=raw["pipeline"]["model_type"]['int'],
+                exp_model_type=raw["pipeline"]["model_type"]['exp'],
             ),
             study=StudyStudyConfig(
                 study_id=raw["study"]["study_id"],
@@ -130,6 +136,7 @@ class InternalDataDictionary:
 class InternalConfig:
     model_name: str
     model_prefix: str
+    int_format: str
     data_dictionary: Dict[str, InternalDataDictionary]
     int_tables: list[str]
 
@@ -137,6 +144,7 @@ class InternalConfig:
     def from_dict(cls, raw: dict) -> "InternalConfig":
         model_name = normalize_name(raw["model_name"], trailing=False, extension="drop")
         model_prefix = normalize_name(raw["model_prefix"], trailing=False, extension='drop')
+        int_format = raw["format"]
 
         data_dict: Dict[str, InternalDataDictionary] = {
             name: InternalDataDictionary(
@@ -154,26 +162,25 @@ class InternalConfig:
             )
             for v in data_dict.values()
         ]
+
         return cls(
             model_name=model_name,
             model_prefix=model_prefix,
+            int_format=int_format,
             data_dictionary=data_dict,
             int_tables=int_tables,
         )
 
 
-# TODO tgt model id to name use exp everywhere.
-# prefixes to configs and used to create table names
-
 @dataclass(frozen=True)
 class ExportDataDictionary:
     identifier: Path
     exp_dd_identifier: Path
-    # table_id: str
 @dataclass(frozen=True)
 class ExportConfig:
     model_name: str
     model_prefix: str
+    exp_format: str
     data_dictionary: Dict[str, ExportDataDictionary]
     exp_tables: list[str]
 
@@ -182,6 +189,7 @@ class ExportConfig:
         data_dict: Dict[str, ExportDataDictionary] = {}
         model_name = normalize_name(raw["model_name"], trailing=False, extension="drop")
         model_prefix = normalize_name(raw['model_prefix'], trailing=False, extension='drop')
+        exp_format = raw["format"]
         for name, cfg in raw["data_dictionary"].items():
             data_dict[name] = ExportDataDictionary(
                 identifier=Path(cfg["identifier"]),
@@ -200,6 +208,7 @@ class ExportConfig:
         return cls(
             model_name=model_name,
             model_prefix=model_prefix,
+            exp_format=exp_format,
             data_dictionary=data_dict,
             exp_tables=exp_tables,
         )

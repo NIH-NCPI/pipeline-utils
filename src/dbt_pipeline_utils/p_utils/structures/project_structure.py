@@ -22,6 +22,7 @@ from dbt_pipeline_utils.p_utils.general import (
     shorten_identifier
 )
 from dbt_pipeline_utils.p_utils.common import DD_FORMATS
+from dbt_pipeline_utils.p_utils.dbt_testing import DbtTesting
 
 
 @dataclass
@@ -93,17 +94,17 @@ class StructureBC:
         filepath = filepath / "dbt_project.yml"
         existing = get_existing_yaml(filepath)
 
-        models = existing.setdefault("models", {})
-        study_models = models.setdefault(self.study_id, {})
+        all_models = existing.setdefault("models", {})
 
         for key in ("+schema", "+materialized"):
             val = dbtp_defs.get(key)
-            if val is not None and key not in study_models:
-                study_models[key] = val
+            if val is not None and key not in all_models:
+                all_models[key] = val
 
         # Add empty tables
         for table_id in table_names:
-            study_models.setdefault(table_id, {})
+            table_id = normalize_name(table_id, trailing=False, extension='drop')
+            all_models.setdefault(table_id, {})
 
         write_file(filepath, existing, mode="overwrite")
 
@@ -133,12 +134,13 @@ class StructureBC:
 
         column_map = DD_FORMATS[dd_format]  # Define dd column expectations
         column_data_list = []
-        # import pdb
-        # pdb.set_trace()
+
         if df is not None:
             df = df.astype("string").where(pd.notna(df), None)
         else:
             logger.error('Fail test')
+            import pdb
+            pdb.set_trace()
         def as_str_or_none(v):
             return None if v is None or pd.isna(v) else str(v)
 
@@ -185,6 +187,61 @@ class StructureBC:
         column_data[key] = self.extract_columns(src_df, self.dd_format)
 
         return column_data
+
+    def build_column_metadata(
+        self,
+        *,
+        table_name: str,
+        table_prefix: str,
+        dd_filepath: Path,
+        include_tests: bool = True,
+    ):
+        """
+        Returns:
+        - column metadata for yaml
+        - column doc identifiers (doc_id, description)
+        """
+
+        src_table_key = normalize_name(dd_filepath, trailing=False, extension="drop")
+        column_data = self.load_column_data(dd_filepath)
+
+        columns = []
+        doc_blocks = []
+
+        for (
+            col_name,
+            col_name_code,
+            col_description,
+            col_data_type,
+            enums,
+            _,
+            _,
+            tests,
+        ) in column_data.get(src_table_key, []):
+
+            doc_id = self.generate_doc_block_name(table_name, col_name_code, table_prefix)
+
+            column_entry = {
+                "name": col_name,
+                "description": f'{{{{ doc("{doc_id}") }}}}',
+            }
+            tester = DbtTesting
+            if include_tests and tests:
+
+                column_entry["tests"] = tester.format_tests(tests, col_name_code, enums)
+
+            columns.append(column_entry)
+
+            doc_blocks.append(
+                (
+                    doc_id,
+                    col_description.strip()
+                    if isinstance(col_description, str) and col_description.strip()
+                    else col_name,
+                )
+            )
+
+        return columns, doc_blocks
 
     def generate_dds(
         self, input_dd_path, output_path, input_dd_format, additions_filepath=None
@@ -248,136 +305,103 @@ class StructureBC:
         """
         Ensures dbt doc block names consist of only letters, numbers and underscores, as dbt expects.
         """
-        name = normalize_name([table_prefix, table_name, column_name], trailing=False, extension='drop')
+        name = normalize_name([table_name, column_name], trailing=False, extension='drop')
         result = shorten_identifier(name)
         return result
 
-    def format_tests(self, tests, col, enums=None):
+    def generate_column_descriptions(
+        self,
+        *,
+        output_dir: Path,
+        doc_blocks: list[tuple[str, str]],
+    ):
         """
-        Formats the tests string into dbt-compatible test definitions.
-
-        Args:
-            tests: A pipe-delimited string of tests, e.g., "not_null|accepted_values".
-            enums: enumeration values, e.g., 'HTP', 'Other'.
-                                    Used when "accepted_values" is one of the tests.
-
-        Returns:
-            list: A list of dictionaries representing the formatted dbt tests.
+        Writes column_descriptions.md using precomputed identifiers.
         """
-        test_list = tests.split("|")
 
-        if enums is not None:
-            enums = [enum.strip() for enum in enums.split(";")]
+        output_filepath = output_dir / "column_descriptions.md"
 
-        formatted_tests = []
-        is_required = "not_null" in test_list
+        if not output_filepath.exists():
+            output_filepath.touch()
 
-        for test in test_list:
-            test = test.strip()
+        existing = output_filepath.read_text().rstrip()
 
-            if test == "accepted_values" and enums and not is_required:
-                formatted_tests.append(
-                    {
-                        "accepted_values": {
-                            "values": enums,
-                            "config": {"where": f"{col} is not null"},
-                        }
-                    }
-                )
-            if test == "accepted_values" and enums and is_required:
-                formatted_tests.append({"accepted_values": {"values": enums}})
+        existing_ids = set(re.findall(r"\{%\s*docs\s+([\w\d_]+)\s*%\}", existing))
 
-            if test == "not_null":
-                formatted_tests.append(test)
+        new_blocks = []
 
-        return formatted_tests
+        for doc_id, description in doc_blocks:
+            if doc_id in existing_ids:
+                continue
 
-    def generate_models_yml(self, config, table_prefix, input_dd_dir, output_dir):
+            new_blocks.append(f"{{% docs {doc_id} %}}\n{description}\n{{% enddocs %}}")
+            existing_ids.add(doc_id)
+
+        if new_blocks:
+            content = (
+                existing + "\n\n" + "\n\n".join(new_blocks)
+                if existing
+                else "\n\n".join(new_blocks)
+            )
+            write_file(output_filepath, content, mode="overwrite")
+
+    def generate_models_yml(
+        self,
+        *,
+        config,
+        table_prefix: str,
+        input_dd_dir: Path,
+        output_dir: Path,
+    ):
         """
-        Generates dbt models.yml file for each table in its respective directory, including src and staging models.
-
-        Doctest
-        -------
-        >>> from pathlib import Path
-        >>> from collections import namedtuple
-        >>> InternalDataDictionary = namedtuple("InternalDataDictionary", ["identifier", "pipeline_identifier", "table_id"])
-        >>> int_config = type("C", (), {})()
-        >>> int_config.data_dictionary = {
-        ...     "AccessPolicy_data_access_type": InternalDataDictionary(
-        ...         identifier=Path("AccessPolicy_data_access_type-dd.csv"),
-        ...         pipeline_identifier=Path("ftd_accesspolicy_data_access_type_dd.csv"),
-        ...         table_id="ftd_accesspolicy_data_access_type",
-        ...     )
-        ... }
-        >>> for dd_name, details in int_config.data_dictionary.items():
-        ...     print(dd_name, details.table_id)
-        AccessPolicy_data_access_type ftd_accesspolicy_data_access_type
+        Generates __models.yml and column_descriptions.md together.
         """
+
         models = []
+        all_doc_blocks: list[tuple[str, str]] = []
 
-        for dd_name, details in config.data_dictionary.items():
+        for tablename, dd_info in config.data_dictionary.items():
 
-            input_dd_path = input_dd_dir / details.identifier
-            src_table_key = normalize_name(input_dd_path, trailing=False, extension='drop')
+            dd_filepath = input_dd_dir / dd_info.identifier
+            table_name = normalize_name(
+                [table_prefix, tablename], trailing=False, extension="drop"
+            )
 
-            column_data = self.load_column_data(input_dd_path)
+            columns, doc_blocks = self.build_column_metadata(
+                table_name=table_name,
+                table_prefix=table_prefix,
+                dd_filepath=dd_filepath,
+            )
 
-            columns_metadata = [
+            models.append(
                 {
-                    "name": col_name_code,
-                    "description": f'{{{{ doc("{self.generate_doc_block_name(src_table_key, col_name_code, table_prefix)}") }}}}',
-                    "data_type": col_data_type,
-                    **(
-                        {"tests": self.format_tests(tests, col_name_code, enums)}
-                        if tests is not None
-                        else {}
-                    ),
+                    "name": table_name,
+                    "description": f"Model for {table_name}.",
+                    "columns": columns,
                 }
-                for _, col_name_code, _, col_data_type, enums, _, _, tests in column_data.get(
-                    src_table_key, []
-                )
-            ]
+            )
 
-            t_name = normalize_name([table_prefix, input_dd_path], trailing=False, extension='drop')
-            model_entry = {
-                "name": t_name,
-                "description": f"Model for {t_name}.",
-                "columns": columns_metadata,
-            }
+            all_doc_blocks.extend(doc_blocks)
 
-            models.append(model_entry)
+        write_file(
+            output_dir / "__models.yml",
+            {"models": models},
+            mode="merge",
+        )
 
-        models = {"models": models}
-        filepath = output_dir / "__models.yml"
-        write_file(filepath, models, mode="merge")
+        self.generate_column_descriptions(
+            output_dir=output_dir,
+            doc_blocks=all_doc_blocks,
+        )
 
-    # def dbt_project_add_models(
-    #     self, filepath: Path, table_names: list[str], dbtp_defs: dict
-    # ) -> None:
-    #     """
-    #     Add top-level model defaults (+schema, +materialized)
-    #     """
-    #     filepath = filepath / "dbt_project.yml"
-    #     existing = get_existing_yaml(filepath)
-
-    #     models = existing.setdefault("models", {})
-    #     study_models = models.setdefault(self.study_id, {})
-
-    #     for key in ("+schema", "+materialized"):
-    #         val = dbtp_defs.get(key)
-    #         if val is not None and key not in study_models:
-    #             study_models[key] = val
-
-    #     # Add empty tables
-    #     for table_id in table_names:
-    #         study_models.setdefault(table_id, {})
-
-    #     write_file(filepath, existing, mode="overwrite")
-
-    def generate_sources_yml(self, input_dd_dir: Path, output_dir: Path):
+    def generate_sources_yml(
+        self,
+        *,
+        input_dd_dir: Path,
+        output_dir: Path,
+    ):
         """
-        Append source-table entries for this PipelineObject.
-        Do not duplicate existing tables.
+        Generate / update sources.yml and column docs consistently.
         """
 
         filepath = output_dir / "sources.yml"
@@ -389,6 +413,7 @@ class StructureBC:
             (s for s in sources if s.get("name") == self.study_id),
             None,
         )
+
         if study_block is None:
             study_block = {
                 "name": self.study_id,
@@ -398,192 +423,47 @@ class StructureBC:
             sources.append(study_block)
 
         tables = study_block.setdefault("tables", [])
+        existing_table_names = {t["name"] for t in tables}
 
-        dd_path = input_dd_dir / self.dd_identifier
-        src_table_key = dd_path.stem
-        column_data = self.load_column_data(dd_path)
+        dd_filepath = input_dd_dir / self.dd_identifier
+
+        all_doc_blocks: list[tuple[str, str]] = []
+
         for filename in self.df_identifiers:
-            table_name = normalize_name(filename, trailing=True, extension="drop")
 
-            columns_metadata = [
-                {
-                    "name": col_name,
-                    "description": (
-                        f'{{{{ doc("{self.generate_doc_block_name(table_name, col_name_code, self.src_table_prefix)}") }}}}'
-                    ),
-                }
-                for col_name, col_name_code, _, _, _, _, _, _ in column_data.get(
-                    src_table_key, []
-                )
-            ]
-
-            existing_table_names = {t["name"] for t in tables}
-
-            # for df_identifier in self.df_identifiers:
             table_name = Path(filename).stem
 
             if table_name in existing_table_names:
-                logger.debug(f"No updates needed: {filepath}")
                 continue
+
+            normalized_table = normalize_name(
+                filename, trailing=True, extension="drop"
+            )
+
+            columns, doc_blocks = self.build_column_metadata(
+                table_name=normalized_table,
+                table_prefix=self.src_table_prefix,
+                dd_filepath=dd_filepath,
+                include_tests=False,
+            )
 
             tables.append(
                 {
                     "name": table_name,
                     "description": f"Source table for {table_name}.",
-                    "columns": columns_metadata,
+                    "columns": columns,
                 }
             )
 
+            all_doc_blocks.extend(doc_blocks)
+
         write_file(filepath, existing, mode="overwrite")
 
-    # def generate_column_descriptions(
-    #     self,
-    #     table_prefix,
-    #     input_dd_dir,
-    #     output_dir,
-    #     *,
-    #     mode: str,
-    #     df_identifiers=None,
-    #     config=None,
-    # ):
-    #     """
-    #     Generates column_descriptions.md for tables.
-
-    #     mode = "study" → iterate self.df_identifiers
-    #     mode = "static" → iterate config.data_dictionary
-    #     """
-
-    #     output_filepath = output_dir / "column_descriptions.md"
-
-    #     if not output_filepath.exists():
-    #         output_filepath.touch()
-
-    #     existing_data = output_filepath.read_text().rstrip()
-
-    #     existing_col_doc_ids = set(
-    #         re.findall(r"\{%\s*docs\s+([\w\d_]+)\s*%\}", existing_data)
-    #     )
-
-    #     new_descriptions = []
-
-    #     if mode == "study":
-    #         items = self.df_identifiers
-
-    #     elif mode == "cdm":
-    #         items = list(config.data_dictionary.values())
-
-    #     else:
-    #         raise ValueError(f"Unsupported mode: {mode}")
-
-    #     for item in items:
-
-    #         if mode == "study":
-    #             dd_filepath = input_dd_dir / self.dd_identifier
-    #             table_name = normalize_name(item, trailing=True, extension="drop")
-
-    #         else:  # static
-    #             dd_filepath = input_dd_dir / item.identifier
-    #             table_name = normalize_name(dd_filepath, trailing=False, extension="drop")
-
-    #         src_table_key = normalize_name(dd_filepath, trailing=False, extension="drop")
-    #         column_data = self.load_column_data(dd_filepath)
-
-    #         for _, col_name_code, col_description, *_ in column_data.get(src_table_key, []):
-    #             col_doc_id = self.generate_doc_block_name(
-    #                 table_name, col_name_code, table_prefix
-    #             )
-
-    #             if col_doc_id in existing_col_doc_ids:
-    #                 continue
-
-    #             block = (
-    #                 f"{{% docs {col_doc_id} %}}\n" f"{col_description}\n" f"{{% enddocs %}}"
-    #             )
-
-    #             new_descriptions.append(block)
-    #             existing_col_doc_ids.add(col_doc_id)
-
-    #     new_data = "\n\n".join(new_descriptions).strip()
-
-    #     if new_data:
-    #         data = existing_data + "\n" + new_data if existing_data else new_data
-    #         write_file(output_filepath, data, mode="overwrite")
-    #     else:
-    #         logger.debug(f"No updates needed: {output_filepath}")
-
-    def generate_column_descriptions(
-        self,
-        table_prefix,
-        input_dd_dir,
-        output_dir,
-        *,
-        mode: str,
-        config=None,
-    ):
-        """
-        Generates column_descriptions.md for tables.
-
-        mode = "study" → iterate self.df_identifiers
-        mode = "cdm" → iterate config.data_dictionary
-        """
-
-        output_filepath = output_dir / "column_descriptions.md"
-
-        if not output_filepath.exists():
-            output_filepath.touch()
-
-        existing_data = output_filepath.read_text().rstrip()
-
-        existing_col_doc_ids = set(
-            re.findall(r"\{%\s*docs\s+([\w\d_]+)\s*%\}", existing_data)
+        # Emit column docs using the SAME identifiers
+        self.generate_column_descriptions(
+            output_dir=output_dir,
+            doc_blocks=all_doc_blocks,
         )
-
-        new_descriptions = []
-
-        if mode == "study":
-            items = self.df_identifiers
-
-        elif mode == "cdm":
-            items = list(config.data_dictionary.values())
-
-        else:
-            raise ValueError(f"Unsupported mode: {mode}")
-
-        for table_id in items:
-
-            if mode == "study":
-                dd_filepath = input_dd_dir / self.dd_identifier
-                table_name = normalize_name(table_id, trailing=True, extension="drop")
-
-            else:  # static
-                dd_filepath = input_dd_dir / table_id.identifier
-                table_name = normalize_name(dd_filepath, trailing=False, extension="drop")
-
-            src_table_key = normalize_name(dd_filepath, trailing=False, extension="drop")
-            column_data = self.load_column_data(dd_filepath)
-
-            for _, col_name_code, col_description, *_ in column_data.get(src_table_key, []):
-                col_doc_id = self.generate_doc_block_name(
-                    table_name, col_name_code, table_prefix
-                )
-
-                if col_doc_id in existing_col_doc_ids:
-                    continue
-
-                block = (
-                    f"{{% docs {col_doc_id} %}}\n" f"{col_description}\n" f"{{% enddocs %}}"
-                )
-
-                new_descriptions.append(block)
-                existing_col_doc_ids.add(col_doc_id)
-
-        new_data = "\n\n".join(new_descriptions).strip()
-
-        if new_data:
-            data = existing_data + "\n" + new_data if existing_data else new_data
-            write_file(output_filepath, data, mode="overwrite")
-        else:
-            logger.debug(f"No updates needed: {output_filepath}")
 
     def generate_run_command(self, operation, model, args=None):
         """Generates a dbt run command for models or macros with optional arguments."""
@@ -598,11 +478,11 @@ class StructureBC:
 
         if operation == "model":
             all_args = f"--vars '{json.dumps(args)}'" if args else ""
-            op = f"dbt run --select +{model} {all_args}".strip()
+            op = f"dbt run --select {model} {all_args}".strip()
 
         if operation == "test":
             all_args = f"--vars '{json.dumps(args)}'" if args else ""
-            op = f"dbt test --select +{model} {all_args}".strip()
+            op = f"dbt test --select {model} {all_args}".strip()
 
         return op
 
@@ -618,26 +498,36 @@ class StructureBC:
 
         int_vars = {}
         tgt_vars = {}
-
+        first_src_table = normalize_name(
+            self.src_prefixed_tables[0],
+            trailing=False,
+            extension="drop"
+        )
         commands_list.append("# Source tables")
-        for tbl in self.src_prefixed_tables:
-            commands_list.append(self.generate_run_command("model", tbl))
+        for table in self.src_prefixed_tables:
+            tablename = normalize_name(table, trailing=False, extension='drop')
+            commands_list.append(self.generate_run_command("model", tablename))
 
         for table_id in self.int_prefixed_tables:
             int_vars[table_id] = {
-                "source_table": "SRC DATAMODEL HERE",
+                "source_table": first_src_table,
                 "target_schema": self.int_dbtp_def["+schema"],
             }
 
         for table_id in self.exp_prefixed_tables:
+            ref_table = table_id.replace(self.exp_table_prefix,self.int_table_prefix)
             tgt_vars[table_id] = {
-                "source_table": table_id,
+                "source_table": ref_table,
                 "target_schema": self.exp_dbtp_def['+schema'],
             }
-        commands_list.append("# Internal tables and tests")
+
+        commands_list.append("# Internal tables run commands")
+        for table, args in int_vars.items():
+            commands_list.append(self.generate_run_command("model", table, args))
+
+        commands_list.append("# Internal table tests")
         for table, args in int_vars.items():
             commands_list.append(self.generate_run_command("test", table, args))
-            commands_list.append(self.generate_run_command("model", table, args))
 
         commands_list.append("# Export model run commands")
         for table, args in tgt_vars.items():
