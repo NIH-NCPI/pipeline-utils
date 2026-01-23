@@ -103,14 +103,13 @@ class PipelineObject:
 
         self.paths = self.structure.get_paths()
 
-
-
     def load_internal_config(self, static_dir: Path) -> None:
         """
         Load a secondary YAML config once paths are initialized.
         """
         config_path = (
-            static_dir / f"static/common_data_models/internal/metadata/_{self.int_model_name}/_{self.int_model_name}_study.yaml"
+            static_dir
+            / f"static/common_data_models/internal/metadata/{self.int_model_name}/_{self.int_model_name}_study.yaml"
         )
         if not config_path.exists():
             raise FileNotFoundError(f"Config not found: {config_path}")
@@ -123,7 +122,8 @@ class PipelineObject:
         Load a secondary YAML config once paths are initialized.
         """
         config_path = (
-            static_dir / f"static/common_data_models/export/metadata/_{self.exp_model_name}/_{self.exp_model_name}_study.yaml"
+            static_dir
+            / f"static/common_data_models/export/metadata/{self.exp_model_name}/_{self.exp_model_name}_study.yaml"
         )
 
         if not config_path.exists():
