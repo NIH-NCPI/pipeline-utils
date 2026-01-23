@@ -19,9 +19,8 @@ from dbt_pipeline_utils.p_utils.common import MAX_IDENTIFIER_LEN, SAFE_CHARS
 from dbt_pipeline_utils import logger
 
 
-
 def read_file(filepath):
-    path = Path(filepath)
+    path = Path(filepath).resolve()
 
     if not path.exists():
         logger.warning(f"File does not exist: {path}")
@@ -55,7 +54,7 @@ def write_file(
     *,
     mode: str = "overwrite",
 ) -> None:
-    filepath = Path(filepath)
+    filepath = Path(filepath).resolve()
 
     logger.debug(f"write_file '{mode}' mode. file: '{tail_path(filepath,depth=3)}'")
 
@@ -169,6 +168,17 @@ def copy_directory(src_dir, dest_dir):
 
             logger.debug(f"Copied '{src_dir}' to '{dest_dir}'")
 
+
+def copy_file(src_filepath, dest_filepath):
+    """
+    Recursively copies files and subdirectories from src_dir to dest_dir
+    """
+
+    # Copy file contents manually
+    data = read_file(src_filepath)
+    write_file(dest_filepath, data)
+
+    logger.debug(f"Copied '{src_filepath}' to '{dest_filepath}'")
 
 
 def clean_string(input: str) -> str:

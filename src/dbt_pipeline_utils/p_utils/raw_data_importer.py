@@ -10,8 +10,7 @@ class RawDataImporter:
 
         This function will run using an import macro within the dbt project itself.
         """
-        # import pdb
-        # pdb.set_trace()
+
         try:
             result = subprocess.run(
                 [

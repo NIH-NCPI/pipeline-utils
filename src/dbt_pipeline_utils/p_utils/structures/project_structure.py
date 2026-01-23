@@ -544,6 +544,18 @@ class StructureBC:
         subprocess.run(["chmod", "+x", filepath], check=True)
 
 
+def get_model_names(self, prefix, table_list):
+    model_list = []
+    for file in table_list:
+
+        model_list.append( normalize_name(
+            [prefix, file],
+            trailing=False,
+            extension="drop",
+        ))
+    return model_list
+
+
 if __name__ == "__main__":
     import doctest
 

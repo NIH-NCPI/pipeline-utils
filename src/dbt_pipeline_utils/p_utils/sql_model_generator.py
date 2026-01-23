@@ -2,7 +2,6 @@ from jinja2 import Template
 from typing import Type, Dict, ClassVar, Any, List
 from pathlib import Path
 from dbt_pipeline_utils import logger
-from dbt_pipeline_utils.p_utils.databases.database_context import DatabaseContext
 from dataclasses import dataclass, field
 from dbt_pipeline_utils.p_utils.common import type_mapping
 from dbt_pipeline_utils.p_utils.general import normalize_name, write_file

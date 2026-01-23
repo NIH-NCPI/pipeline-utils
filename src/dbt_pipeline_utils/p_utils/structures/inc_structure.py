@@ -15,7 +15,8 @@ from dbt_pipeline_utils.p_utils.general import (
     get_existing_yaml,
     normalize_name,
     shorten_identifier,
-    copy_directory
+    copy_directory,
+    copy_file
 )
 
 @StructureBC.register("inc")
@@ -26,6 +27,12 @@ class IncStructureSC(StructureBC):
         home_profiles = Path.home() / ".dbt/profiles.yml"
 
         utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
+        p_utils_dir = utils_root_dir / "p_utils"
+
+        utils_macros_dir = p_utils_dir / 'macros'
+        utils_data_dir = utils_root_dir / '../../data'
+        utils_files_dir = utils_data_dir / 'static/files'
+
         pl_project_dir = Path.cwd()
         pl_root_dir = pl_project_dir.parent
 
@@ -33,6 +40,7 @@ class IncStructureSC(StructureBC):
 
         pl_commands_dir = pl_project_dir / "run_commands" / self.project_id / self.study_id
 
+        pl_macros_dir = pl_project_dir / "macros"
         pl_models_dir = pl_project_dir / "models"
         pl_models_proj_dir = pl_models_dir / self.project_id
         pl_proj_study_dir = pl_models_proj_dir / self.study_id
@@ -58,7 +66,7 @@ class IncStructureSC(StructureBC):
         pl_exp_dir = pl_models_dir / "export"
         pl_sp_exp_dir = pl_exp_dir / self.exp_model_name
 
-        static_data_dir = pl_root_dir / "data/static"
+        static_data_dir = pl_data_dir / "static"
         cdm_dir = static_data_dir / "common_data_models"
 
         static_internal_dir = cdm_dir / "internal"
@@ -73,10 +81,12 @@ class IncStructureSC(StructureBC):
         paths = {
             "pl_profiles": pl_profiles,
             "home_profiles": home_profiles,
-            "utils_root_dir": utils_root_dir,
+            "utils_macros_dir": utils_macros_dir,
+            "utils_files_dir": utils_files_dir,
             "pl_root_dir": pl_root_dir,
             "pl_project_dir": pl_project_dir,
             "pl_commands_dir": pl_commands_dir,
+            "pl_macros_dir": pl_macros_dir,
             "pl_models_dir": pl_models_dir,
             "pl_models_proj_dir": pl_models_proj_dir,
             "pl_proj_study_dir": pl_proj_study_dir,
@@ -88,7 +98,6 @@ class IncStructureSC(StructureBC):
             "pl_int_models_dir": pl_int_models_dir,
             "pl_int_docs_dir": pl_int_docs_dir,
             "pl_exp_dir": pl_exp_dir,
-            # "pl_sp_exp_dir": pl_sp_exp_dir,
             "static_data_dir": static_data_dir,
             "static_int_metadata_dir": static_int_metadata_dir,
             "static_int_additions_dir": static_int_additions_dir,
@@ -135,9 +144,20 @@ class IncStructureSC(StructureBC):
         self.dbt_project_add_vars(
             root_dir, self.src_dbtp_def
         )  # TODO - Vars for each stage here
-
+        # import pdb
+        # pdb.set_trace()
         # Add new models if they don't already exist
-        self.dbt_project_add_models(root_dir, self.src_tables, self.src_dbtp_def)
+
+        src_model_tables = []
+        for src_file in self.df_identifiers:
+            src_model_tables.append(
+                normalize_name(
+                    [self.src_table_prefix, src_file],
+                    trailing=False,
+                    extension="drop",
+                )
+            )
+        self.dbt_project_add_models(root_dir, src_model_tables, self.src_dbtp_def)
         self.dbt_project_add_models(
             root_dir, self.int_prefixed_tables, self.int_dbtp_def
         )
@@ -360,10 +380,10 @@ class IncStructureSC(StructureBC):
 
     def copy_static_export_dir(self):
 
-        src_dir = Path(self.paths["static_sp_exp_dir"])  # e.g. /.../study_1
-        dest_root = Path(self.paths["pl_exp_dir"])  # e.g. /.../studies
+        src_dir = Path(self.paths["static_sp_exp_dir"])
+        dest_root = Path(self.paths["pl_exp_dir"]) 
 
-        target_dir = dest_root / src_dir.name  # /.../studies/study_1
+        target_dir = dest_root / src_dir.name
 
         if target_dir.exists():
             logger.info(f"Destination already contains directory: {target_dir}")
@@ -419,3 +439,25 @@ class IncStructureSC(StructureBC):
 
         # Edit script permissions
         subprocess.run(["chmod", "+x", filepath], check=True)
+
+    def copy_required_macros_dir(self):
+
+        src_dir = self.paths["utils_macros_dir"] / 'import_required'
+        dest_root = self.paths["pl_macros_dir"]
+
+        if dest_root.exists():
+            logger.info(f"Destination already contains directory: {dest_root}")
+
+        if not dest_root.exists():
+            copy_directory(src_dir, dest_root)
+
+    def copy_profiles_yml(self):
+
+        src_filepath = (self.paths["utils_files_dir"] / "profiles.yml").resolve()
+        dest_filepath = (self.paths["pl_profiles"]).resolve()
+
+        if dest_filepath.exists():
+            logger.info(f"File exists - Not copying: {dest_filepath}")
+
+        if not dest_filepath.exists():
+            copy_file(src_filepath, dest_filepath)

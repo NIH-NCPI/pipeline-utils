@@ -15,7 +15,7 @@ def main():
         "-c",
         "--study_config_filepath",
         required=True,
-        help="Path to {study}_study.yaml from root dir. Example 'data/{study_id}/{study_id}_study.yaml'",
+        help="Path to {study}_study.yaml from root dir. Example 'data/{study_id}/_{study_id}_study.yaml'",
     )
     parser.add_argument(
         "-r",
@@ -59,6 +59,7 @@ def main():
     any_obj.structure.generate_static_sql_models(config=any_obj.int_config, stage="int")
 
     any_obj.structure.generate_static_sql_models(config=any_obj.exp_config, stage="exp")
+    any_obj.structure.copy_profiles_yml()
 
     for table_name, obj in pipeline_objects.items():
         logger.info(f"\n{table_name.upper()} - PROCESSING")
@@ -71,6 +72,5 @@ def main():
 
         obj.structure.generate_run_script()
 
-        obj.structure.copy_static_export_dir()
 
         logger.info(f"{table_name.upper()} - GENERATION COMPLETE")

@@ -6,7 +6,6 @@ from dbt_pipeline_utils.p_utils.factory_functions import build_pipeline_objects
 from dbt_pipeline_utils.p_utils.configs import StudyConfig
 
 
-
 def main():
 
     parser = argparse.ArgumentParser(
@@ -34,7 +33,6 @@ def main():
         help="Path to the static data directory from the repo root.",
     )
 
-
     args = parser.parse_args()
 
     # Set up paths and load the study config
@@ -47,10 +45,9 @@ def main():
     static_path = Path(root_path / args.static_data_dir).resolve()
     pipeline_objects = build_pipeline_objects(static_path, study_config, study_config_path)
 
-
     for table_name, obj in pipeline_objects.items():
         logger.info(f"\n\n\n{table_name.upper()} - PROCESSING")
-        # logger.info(obj)
+
+        obj.structure.copy_required_macros_dir()
 
         obj.structure.import_org_data()
-
