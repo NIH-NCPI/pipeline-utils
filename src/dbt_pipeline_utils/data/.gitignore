@@ -2,3 +2,7 @@
 *
 
 !.gitignore
+!data
+!static
+!static/files
+!static/files/**/*
