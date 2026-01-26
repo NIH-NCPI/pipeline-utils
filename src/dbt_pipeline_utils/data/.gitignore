@@ -7,3 +7,7 @@
 !static/
 !static/files/
 !static/files/**
+
+!static/
+!static/macros/
+!static/macros/**

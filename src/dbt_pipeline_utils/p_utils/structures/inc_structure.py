@@ -397,6 +397,19 @@ class IncStructureSC(StructureBC):
         if not target_dir.exists():
             copy_directory(src_dir, target_dir)
 
+    def copy_project_macros_dir(self):
+
+        src_dir = Path(self.paths["utils_macros_dir"] / self.project_id)
+        dest_root = Path(self.paths["pl_macros_dir"])
+
+        target_dir = dest_root / src_dir.name
+
+        if target_dir.exists():
+            logger.info(f"Destination already contains directory: {target_dir}")
+
+        if not target_dir.exists():
+            copy_directory(src_dir, target_dir)
+
     def generate_dbt_run_script(self, run_script_dir):
         """Generates a dbt run Bash script dynamically based on a YAML configuration."""
 
@@ -446,7 +459,7 @@ class IncStructureSC(StructureBC):
         # Edit script permissions
         subprocess.run(["chmod", "+x", filepath], check=True)
 
-    def copy_required_macros_dir(self):
+    def copy_import_macros(self):
 
         src_filepath = (
             self.paths["utils_macros_dir"]
