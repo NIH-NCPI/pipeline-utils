@@ -2,6 +2,7 @@
 *
 
 !.gitignore
+!__init__.py
 
 !static/
 !static/files/
