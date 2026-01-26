@@ -399,7 +399,7 @@ class IncStructureSC(StructureBC):
 
     def copy_project_macros_dir(self):
 
-        src_dir = Path(self.paths["utils_macros_dir"] / self.project_id)
+        src_dir = Path(self.paths["utils_macros_dir"] / self.project_id / 'harmonization')
         dest_root = Path(self.paths["pl_macros_dir"])
 
         target_dir = dest_root / src_dir.name
