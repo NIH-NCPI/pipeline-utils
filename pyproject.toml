@@ -16,16 +16,21 @@ requires-python = ">3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dependencies = ["rich"]
+dependencies = ["rich",
+                "duckdb",
+                "sqlparse",
+                "protobuf==5.29.5", # dbt core and adapters require specific versions, do check GH advisory db: CVE-2025-4565
+                "locutus @ git+https://github.com/NIH-NCPI/locutus"
+                ]
 
 dynamic = ["version"]
 
 [tool.setuptools_scm]
-version_file = "src/locutus_util/_version.py"
+version_file = "src/dbt_pipeline_utils/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
 
 [project.scripts]
-generate_model_docs = "dbt_pipeline_utils.p_utils.trigger_generation:main"
+generate_pipeline = "dbt_pipeline_utils.p_utils.trigger_generation:main"
 import_data = "dbt_pipeline_utils.p_utils.trigger_import:main"

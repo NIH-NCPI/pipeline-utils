@@ -457,7 +457,7 @@ class StructureBC:
 
             all_doc_blocks.extend(doc_blocks)
 
-        write_file(filepath, existing, mode="overwrite")
+        write_file(filepath, existing, mode="merge")
 
         # Emit column docs using the SAME identifiers
         self.generate_column_descriptions(

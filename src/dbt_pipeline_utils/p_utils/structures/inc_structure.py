@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-
+from importlib.resources import files
 import dbt_pipeline_utils
 from dbt_pipeline_utils import logger
 from dbt_pipeline_utils.p_utils.structures.project_structure import (
@@ -16,8 +16,11 @@ from dbt_pipeline_utils.p_utils.general import (
     normalize_name,
     shorten_identifier,
     copy_directory,
-    copy_file
+    copy_file,
+    find_repo_root,
 )
+from importlib.resources import files, as_file
+from pathlib import Path
 
 @StructureBC.register("inc")
 class IncStructureSC(StructureBC):
@@ -26,36 +29,39 @@ class IncStructureSC(StructureBC):
     def get_paths(self) -> dict[str, Path]:
         home_profiles = Path.home() / ".dbt/profiles.yml"
 
-        utils_root_dir = Path(dbt_pipeline_utils.__file__).resolve().parent
-        p_utils_dir = utils_root_dir / "p_utils"
+        utils_root_dir = files("dbt_pipeline_utils")
+        # p_utils_dir = utils_root_dir / "p_utils"
+        utils_data_dir = utils_root_dir / "data"
+        utils_static_dir = utils_data_dir / "static"
+        utils_files_dir = utils_static_dir / "files"
+        utils_macros_dir = utils_static_dir / "macros"
 
-        utils_macros_dir = p_utils_dir / 'macros'
-        utils_data_dir = utils_root_dir / '../../data'
-        utils_files_dir = utils_data_dir / 'static/files'
+        pl_dbt_root_dir = Path.cwd()
+        pl_root_dir = find_repo_root()
 
-        pl_project_dir = Path.cwd()
-        pl_root_dir = pl_project_dir.parent
+        pl_profiles = pl_dbt_root_dir / "profiles.yml"
 
-        pl_profiles = pl_project_dir / "profiles.yml"
+        pl_commands_dir = (
+            pl_dbt_root_dir / "run_commands" / self.project_id / self.study_id
+        )
 
-        pl_commands_dir = pl_project_dir / "run_commands" / self.project_id / self.study_id
-
-        pl_macros_dir = pl_project_dir / "macros"
-        pl_models_dir = pl_project_dir / "models"
+        pl_macros_dir = pl_dbt_root_dir / "macros"
+        pl_models_dir = pl_dbt_root_dir / "models"
         pl_models_proj_dir = pl_models_dir / self.project_id
+
         pl_proj_study_dir = pl_models_proj_dir / self.study_id
-        pl_src_study_model_docs_dir = pl_proj_study_dir / "docs"
+        pl_src_model_docs_dir = pl_models_proj_dir / "docs"
 
         pl_data_dir = (
-            self.pipeline_data_dir
+            pl_root_dir / self.pipeline_data_dir
             if self.pipeline_data_dir is not None
-            else pl_project_dir / f"../data/{self.study_id}"
+            else pl_dbt_root_dir / f"../data/{self.study_id}"
         )
 
         study_data_dir = (
-            self.study_data_dir
+            pl_root_dir / self.study_data_dir
             if self.study_data_dir is not None
-            else pl_project_dir / f"../data/{self.study_id}"
+            else pl_dbt_root_dir / f"../data/{self.study_id}"
         )
 
         pl_int_dir = pl_models_dir / "access"
@@ -84,13 +90,13 @@ class IncStructureSC(StructureBC):
             "utils_macros_dir": utils_macros_dir,
             "utils_files_dir": utils_files_dir,
             "pl_root_dir": pl_root_dir,
-            "pl_project_dir": pl_project_dir,
+            "pl_dbt_root_dir": pl_dbt_root_dir,
             "pl_commands_dir": pl_commands_dir,
             "pl_macros_dir": pl_macros_dir,
             "pl_models_dir": pl_models_dir,
             "pl_models_proj_dir": pl_models_proj_dir,
             "pl_proj_study_dir": pl_proj_study_dir,
-            "pl_src_study_model_docs_dir": pl_src_study_model_docs_dir,
+            "pl_src_model_docs_dir": pl_src_model_docs_dir,
             "pl_data_dir": pl_data_dir,
             "study_data_dir": study_data_dir,
             "pl_int_dir": pl_int_dir,
@@ -111,7 +117,7 @@ class IncStructureSC(StructureBC):
             pl_models_dir,
             pl_models_proj_dir,
             pl_proj_study_dir,
-            pl_src_study_model_docs_dir,
+            pl_src_model_docs_dir,
             pl_data_dir,
             study_data_dir,
             pl_int_dir,
@@ -136,7 +142,7 @@ class IncStructureSC(StructureBC):
 
     def generate_dbt_project_yaml(self):
 
-        root_dir = self.paths["pl_project_dir"]
+        root_dir = self.paths["pl_dbt_root_dir"]
         # generate all of the dbt_project files if they don't exist.
         self.generate_base_dbt_project_yml(root_dir, "base", self.db_profile, "create")
 
@@ -200,7 +206,7 @@ class IncStructureSC(StructureBC):
 
         self.generate_sources_yml(
             input_dd_dir=self.paths["study_data_dir"],
-            output_dir=self.paths["pl_src_study_model_docs_dir"],
+            output_dir=self.paths["pl_src_model_docs_dir"],
         )
 
     # def generate_study_desc_files(self):
@@ -442,14 +448,17 @@ class IncStructureSC(StructureBC):
 
     def copy_required_macros_dir(self):
 
-        src_dir = self.paths["utils_macros_dir"] / 'import_required'
-        dest_root = self.paths["pl_macros_dir"]
+        src_filepath = (
+            self.paths["utils_macros_dir"]
+            / "import_required/register_external_sources.sql"
+        )
+        dest_filepath = self.paths["pl_macros_dir"] / "register_external_sources.sql"
 
-        if dest_root.exists():
-            logger.info(f"Destination already contains directory: {dest_root}")
+        if dest_filepath.exists():
+            logger.debug(f"File exists - Not copying: {dest_filepath}")
 
-        if not dest_root.exists():
-            copy_directory(src_dir, dest_root)
+        if not dest_filepath.exists():
+            copy_file(src_filepath, dest_filepath)
 
     def copy_profiles_yml(self):
 
@@ -457,7 +466,7 @@ class IncStructureSC(StructureBC):
         dest_filepath = (self.paths["pl_profiles"]).resolve()
 
         if dest_filepath.exists():
-            logger.info(f"File exists - Not copying: {dest_filepath}")
+            logger.debug(f"File exists - Not copying: {dest_filepath}")
 
         if not dest_filepath.exists():
             copy_file(src_filepath, dest_filepath)
