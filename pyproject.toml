@@ -31,6 +31,9 @@ version_file = "src/dbt_pipeline_utils/_version.py"
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
 
+[tool.setuptools.package-data]
+dbt_pipeline_utils = ["data/static/files/**"]
+
 [project.scripts]
 generate_pipeline = "dbt_pipeline_utils.p_utils.trigger_generation:main"
 import_data = "dbt_pipeline_utils.p_utils.trigger_import:main"
