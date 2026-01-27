@@ -39,6 +39,13 @@ def main():
     pipeline_objects = build_pipeline_objects(
         static_path, study_config, study_config_path
     )
+
+    any_obj = next(iter(pipeline_objects.values()))
+
+    any_obj.structure.generate_dbt_project_yaml()
+    any_obj.structure.copy_profiles_yml()
+
+
     for table_name, obj in pipeline_objects.items():
         logger.info(f"\n\n\n{table_name.upper()} - PROCESSING")
 

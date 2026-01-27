@@ -431,7 +431,7 @@ class StructureBC:
 
         for filename in self.df_identifiers:
 
-            table_name = Path(filename).stem
+            table_name = normalize_name(filename, trailing=False, extension="drop")
 
             if table_name in existing_table_names:
                 continue
