@@ -1,6 +1,9 @@
 from search_dragon import logger as getlogger
 import logging
+from dotenv import load_dotenv
 from os import getenv
+
+load_dotenv()
 
 # Check if Rich should be used
 USE_RICH = getenv("USE_RICH", "false").lower() == "true"
