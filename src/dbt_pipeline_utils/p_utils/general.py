@@ -309,8 +309,7 @@ def find_repo_root():
     for parent in [current, *current.parents]:
         if any(parent.glob("*requirements.txt")):
             return parent.resolve()
-    import pdb
-    pdb.set_trace()
+
     raise RuntimeError("Could not find repo root containing requirements.txt")
 
 

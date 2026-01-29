@@ -17,7 +17,7 @@ else:
 LOGGING_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 # Create and configure the logger
-llevel = getenv("LOCUTUS_LOGLEVEL", logging.WARN)  # Default log level if not set
+llevel = getenv("PUTILS_LOGLEVEL", logging.INFO)  # Default log level if not set
 logger = logging.getLogger("search_dragon")
 logger.setLevel(llevel)
 handler.setFormatter(logging.Formatter(LOGGING_FORMAT))  # Apply format
