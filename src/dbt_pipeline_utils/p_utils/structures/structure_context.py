@@ -33,6 +33,7 @@ class StructureContext:
     exp_format: str
     study_tables: List[str]
     src_model_type: str
+    stb_model_type: str
     int_model_type: str
     exp_model_type: str
 
@@ -47,6 +48,8 @@ class StructureContext:
 
     # Derived / internal fields
     _src_table_prefix: str = field(init=False, default="")
+
+    _stb_table_prefix: str = field(init=False, default="")
 
     _int_table_prefix: str = field(init=False, default="")
     _int_gen_dd_name: str = field(init=False, default="")
@@ -69,6 +72,10 @@ class StructureContext:
         self._src_prefixed_tables = [
             f"{self._src_table_prefix}{t}" for t in self.src_tables
         ]
+
+        self._stb_table_prefix = normalize_name(
+            [self.project_id, self.study_id, "stb"], trailing=True, extension="drop"
+        )
 
         self._int_table_prefix = normalize_name(
             self.int_model_prefix,
@@ -262,6 +269,14 @@ class StructureContext:
         self._src_model_type = value
 
     @property
+    def stb_model_type(self) -> str:
+        return self._stb_model_type
+
+    @stb_model_type.setter
+    def stb_model_type(self, value: str):
+        self._stb_model_type = value
+
+    @property
     def int_model_type(self) -> str:
         return self._int_model_type
 
@@ -333,6 +348,10 @@ class StructureContext:
     @property
     def src_prefixed_tables(self) -> str:
         return self._src_prefixed_tables
+
+    @property
+    def stb_table_prefix(self) -> str:
+        return self._stb_table_prefix
 
     @property
     def int_table_prefix(self) -> str:

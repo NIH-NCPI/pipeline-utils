@@ -20,6 +20,7 @@ class PipelineObject:
     pipeline_db: str
     int_model_name: str
     src_model_type: str
+    stb_model_type: str
     int_model_type: str
     exp_model_type: str
     study_tables: list[str]
@@ -85,6 +86,7 @@ class PipelineObject:
             exp_format=self.exp_config.exp_format,
             study_tables=self.study_tables,
             src_model_type=self.src_model_type,
+            stb_model_type=self.stb_model_type,
             int_model_type=self.int_model_type,
             exp_model_type=self.exp_model_type,
             src_tables=self.src_tables,
@@ -162,6 +164,7 @@ def build_pipeline_objects( static_dir: Path,
             study_data_dir=Path(study_config.study.study_data_dir),
             int_model_name=study_config.pipeline.int_model_name,
             src_model_type=study_config.pipeline.src_model_type,
+            stb_model_type=study_config.pipeline.stb_model_type,
             int_model_type=study_config.pipeline.int_model_type,
             exp_model_type=study_config.pipeline.exp_model_type,
             study_tables=study_config.study_tables,

@@ -1,1 +1,13 @@
+# Python 3.12
+dbt-core==1.9.4
+dbt-postgres==1.8.2
+dbt-duckdb==1.9.3
+pandas==2.2.3
 rich
+protobuf==5.29.5 # dbt core and adapters require specific versions, do check GH advisory db: CVE-2025-4565
+numpy==1.26
+
+# To force an update: 
+# pip install --no-cache-dir "dbt_pipeline_utils @ git+https://github.com/NIH-NCPI/pipeline-utils.git@bg/refactor_test_utils" 
+dbt_pipeline_utils @ git+https://github.com/NIH-NCPI/pipeline-utils.git@bg/refactor_test_utils
+search_dragon @ git+https://github.com/NIH-NCPI/search-dragon.git # search requirement

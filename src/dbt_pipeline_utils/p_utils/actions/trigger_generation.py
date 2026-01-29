@@ -49,8 +49,8 @@ def main():
         any_obj.int_config, any_obj.exp_config
     )
 
+    any_obj.structure.generate_static_sql_models(config=any_obj.int_config, stage="stb")
     any_obj.structure.generate_static_sql_models(config=any_obj.int_config, stage="int")
-
     any_obj.structure.generate_static_sql_models(config=any_obj.exp_config, stage="exp")
     any_obj.structure.copy_static_export_dir()
     any_obj.structure.copy_project_macros_dir()
@@ -66,6 +66,5 @@ def main():
         obj.structure.generate_study_sql_models()
 
         obj.structure.generate_run_script()
-
 
         logger.info(f"{table_name.upper()} - GENERATION COMPLETE")

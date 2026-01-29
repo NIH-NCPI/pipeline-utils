@@ -70,7 +70,6 @@ class IncStructureSC(StructureBC):
         pl_int_docs_dir = pl_int_dir / "docs"
 
         pl_exp_dir = pl_models_dir / "export"
-        pl_sp_exp_dir = pl_exp_dir / self.exp_model_name
 
         static_data_dir = pl_data_dir / "static"
         cdm_dir = static_data_dir / "common_data_models"
@@ -125,7 +124,6 @@ class IncStructureSC(StructureBC):
             pl_int_models_dir,
             pl_int_docs_dir,
             pl_exp_dir,
-            # pl_sp_exp_dir, # Excluded, because this dir will be created
             static_data_dir,
             static_int_metadata_dir,
             static_int_additions_dir,
@@ -150,8 +148,7 @@ class IncStructureSC(StructureBC):
         self.dbt_project_add_vars(
             root_dir, self.src_dbtp_def
         )  # TODO - Vars for each stage here
-        # import pdb
-        # pdb.set_trace()
+
         # Add new models if they don't already exist
 
         src_model_tables = []
@@ -209,35 +206,6 @@ class IncStructureSC(StructureBC):
             output_dir=self.paths["pl_src_model_docs_dir"],
         )
 
-    # def generate_study_desc_files(self):
-
-    #     self.generate_column_descriptions(
-    #         table_prefix=self.src_table_prefix,
-    #         input_dd_dir=self.paths["study_data_dir"],
-    #         output_dir=self.paths["pl_src_study_model_docs_dir"],
-    #         mode="study",
-    #     )
-
-    # def generate_int_desc_files(self, int_config):
-
-    # self.generate_column_descriptions(
-    #     table_prefix=self.int_table_prefix,
-    #     input_dd_dir=self.paths["static_int_metadata_dir"],
-    #     output_dir=self.paths["pl_int_docs_dir"],
-    #     mode="cdm",
-    #     config=int_config,
-    # )
-
-    # def generate_exp_desc_files(self, exp_config):
-
-    #     self.generate_column_descriptions(
-    #         table_prefix=self.exp_table_prefix,
-    #         input_dd_dir=self.paths["static_exp_metadata_dir"],
-    #         output_dir=self.paths["static_sp_exp_dir"],
-    #         mode="cdm",
-    #         config=exp_config,
-    #     )
-
     def generate_run_script(self):
         self.generate_dbt_run_script(self.paths["pl_commands_dir"])
 
@@ -252,7 +220,18 @@ class IncStructureSC(StructureBC):
         )
 
         # Infer stage and directories
-        if stage == 'int':
+
+        if stage == 'stb':
+            metadata_dir = self.paths["static_int_metadata_dir"]
+            model_dir = self.paths["pl_proj_study_dir"]
+            macro_dir = None
+            table_prefix = self.stb_table_prefix
+            src_table_prefix = self.src_table_prefix
+            model_type = self.stb_model_type
+            if self.stb_model_type == 'model_macro':
+                macro_dir = self.paths["pl_models_proj_dir"] / "macros"
+
+        elif stage == 'int':
             metadata_dir = self.paths["static_int_metadata_dir"]
             model_dir = self.paths["pl_int_models_dir"]
             macro_dir = None
@@ -288,6 +267,10 @@ class IncStructureSC(StructureBC):
             model_name = normalize_name(
                 [table_prefix, tablename], trailing=False, extension="drop"
             )
+
+            if stage == 'stb':
+                tablename = self.df_identifiers[0]
+
             src_ref = normalize_name(
                 [src_table_prefix, tablename], trailing=False, extension="drop"
             )

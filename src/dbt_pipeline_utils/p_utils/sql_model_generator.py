@@ -66,13 +66,16 @@ select
             sql_type = type_mapping.get(col_data_type, "text")
             src_col = src_var_name
 
-            if stage == "int":
+            if stage == "stb":
                 if (comment and "Foreign Key:" in comment) or src_var_name == "id":
                     src_col = (
-                        f"{{ generate_global_id(prefix='', descriptor=[''], study_id='{self.study_id}') }}"
+                        f"{{{{ generate_global_id(prefix='', descriptor=[''], study_id='{self.study_id}') }}}}"
                     )
+                column_definitions.append(f'null::{sql_type} as "{f_col_name}"')
 
-                column_definitions.append(f'NULL::{sql_type} as "{f_col_name}"')
+
+            elif stage == "int":
+                column_definitions.append(f'{src_col}::{sql_type} as "{f_col_name}"')
 
             elif stage == "exp":
                 column_definitions.append(f'{src_col}::{sql_type} as "{col_name}"')

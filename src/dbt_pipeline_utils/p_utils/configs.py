@@ -12,6 +12,7 @@ class StudyPipelineConfig:
     int_model_name: str
     exp_model_name: str
     src_model_type: str
+    stb_model_type: str
     int_model_type: str
     exp_model_type: str
 
@@ -72,7 +73,6 @@ class StudyConfig:
     def from_dict(cls, raw: dict) -> "StudyConfig":
 
         return cls(
-
             study_tables=list(raw["data_file"].keys()),
             src_tables=[
                 item
@@ -85,9 +85,10 @@ class StudyConfig:
                 pipeline_data_dir=raw["pipeline"]["data_dir"],
                 int_model_name=raw["pipeline"]["int_model_name"],
                 exp_model_name=raw["pipeline"]["exp_model_name"],
-                src_model_type=raw["pipeline"]["model_type"]['src'],
-                int_model_type=raw["pipeline"]["model_type"]['int'],
-                exp_model_type=raw["pipeline"]["model_type"]['exp'],
+                src_model_type=raw["pipeline"]["model_type"]["src"],
+                stb_model_type=raw["pipeline"]["model_type"]["stb"],
+                int_model_type=raw["pipeline"]["model_type"]["int"],
+                exp_model_type=raw["pipeline"]["model_type"]["exp"],
             ),
             study=StudyStudyConfig(
                 study_id=raw["study"]["study_id"],
