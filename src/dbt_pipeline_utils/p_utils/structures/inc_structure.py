@@ -436,7 +436,7 @@ class IncStructureSC(StructureBC):
         write_file(filepath, data, mode="create")
 
         # Edit script permissions
-        subprocess.run(["chmod", "+x", filepath], check=True)
+        filepath.chmod(0o755)
 
     def copy_import_macros(self):
 

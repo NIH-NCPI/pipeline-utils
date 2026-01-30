@@ -491,6 +491,7 @@ class StructureBC:
 
         commands_list = [
             "#!/bin/bash",
+            "set -e",
             "dbt clean",
             'dbt deps || { echo "Error: dbt deps failed. Exiting..."; exit 1; }',
             "dbt seed #--full-refresh",
@@ -541,7 +542,7 @@ class StructureBC:
         write_file(filepath, data, mode='create')
 
         # Edit script permissions
-        subprocess.run(["chmod", "+x", filepath], check=True)
+        filepath.chmod(0o755)
 
 
 def get_model_names(self, prefix, table_list):
