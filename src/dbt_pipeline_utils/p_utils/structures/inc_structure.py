@@ -359,7 +359,7 @@ class IncStructureSC(StructureBC):
 
             dbt_tablename = normalize_name(df, trailing=False, extension="drop")
 
-            args = f'{{fq_tablename: "{dbt_tablename}", csv_path: "{raw_data_csv_path}"}}'
+            args = f"{{fq_tablename: '{dbt_tablename}', csv_path: '{raw_data_csv_path}'}}"
 
             importer.import_data(dbt_tablename, args)
 
