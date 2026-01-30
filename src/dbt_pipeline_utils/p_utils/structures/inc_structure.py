@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 from importlib.resources import files
 import dbt_pipeline_utils
-from dbt_pipeline_utils import logger
+from dbt_pipeline_utils import logger, find_repo_root
 from dbt_pipeline_utils.p_utils.structures.project_structure import (
     StructureBC,
 )
@@ -10,14 +10,10 @@ from dbt_pipeline_utils.p_utils.sql_model_generator import SqlModelGenerator
 from dbt_pipeline_utils.p_utils.raw_data_importer import RawDataImporter
 
 from dbt_pipeline_utils.p_utils.general import (
-    read_file,
     write_file,
-    get_existing_yaml,
     normalize_name,
-    shorten_identifier,
     copy_directory,
     copy_file,
-    find_repo_root,
 )
 from importlib.resources import files, as_file
 from pathlib import Path
@@ -375,7 +371,7 @@ class IncStructureSC(StructureBC):
         target_dir = dest_root / src_dir.name
 
         if target_dir.exists():
-            logger.info(f"Destination already contains directory: {target_dir}")
+            logger.debug(f"Nothing to do - destination already contains directory: {target_dir}")
 
         if not target_dir.exists():
             copy_directory(src_dir, target_dir)
@@ -388,7 +384,7 @@ class IncStructureSC(StructureBC):
         target_dir = dest_root / src_dir.name
 
         if target_dir.exists():
-            logger.info(f"Destination already contains directory: {target_dir}")
+            logger.debug(f"Nothing to do - destination contains directory: {target_dir}")
 
         if not target_dir.exists():
             copy_directory(src_dir, target_dir)

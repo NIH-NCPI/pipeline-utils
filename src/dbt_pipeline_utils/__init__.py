@@ -1,32 +1,59 @@
 from search_dragon import logger as getlogger
 import logging
+from pathlib import Path
 from dotenv import load_dotenv
 from os import getenv
 
-load_dotenv()
+def find_repo_root():
+    current = Path.cwd()
 
-# Check if Rich should be used
-USE_RICH = getenv("USE_RICH", "false").lower() == "true"
+    # Look for a requirements.txt file to identify the repo root
+    for parent in [current, *current.parents]:
+        if any(parent.glob("*requirements.txt")):  # Match requirements.txt
+            return parent.resolve()
+
+    raise RuntimeError("Could not find repo root containing requirements.txt")
+
+
+# Explicitly define the path to the .env file
+repo_root = find_repo_root()
+env_path = repo_root / ".env"
+
+# Load the .env file
+success = load_dotenv(dotenv_path=env_path, override=True)
+
+# Normalize USE_RICH
+USE_RICH = getenv("USE_RICH", "false").strip().lower() == "true"
+
+# Map SEARCH_DRAGON_LOGLEVEL to an integer log level
+SD_LOGLEVEL = getenv("SEARCH_DRAGON_LOGLEVEL", "INFO").strip().upper()
+sdllevel = logging._nameToLevel.get(SD_LOGLEVEL, logging.INFO)
+
+# Map PUTILS_LOGLEVEL to an integer log level
+LOGLEVEL_STRING = getenv("PUTILS_LOGLEVEL", "INFO").strip().upper()
+llevel = logging._nameToLevel.get(LOGLEVEL_STRING, logging.INFO)
+
+# Set the logging format
+LOGGING_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+TIME_FORMAT = "%H:%M:%S"  # Time format: hours, minutes, seconds
 
 # Conditional import of rich
 if USE_RICH:
     from rich.logging import RichHandler
-
-    handler = RichHandler()  # RichHandler for pretty-printed logs
+    handler = RichHandler(
+        show_time=False,  # Disable Rich's own timestamp
+        show_level=True,  # Show log level
+        show_path=False,  # Disable source file path in logs
+        rich_tracebacks=True,  # Optional: Enable rich traceback formatting
+    )
+    handler.setFormatter(logging.Formatter(fmt=LOGGING_FORMAT, datefmt=TIME_FORMAT))
 else:
     handler = logging.StreamHandler()  # Default StreamHandler
+    handler.setFormatter(logging.Formatter(fmt=LOGGING_FORMAT, datefmt=TIME_FORMAT))
 
-# Set the logging format
-LOGGING_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
-# Create and configure the logger
-llevel = getenv("PUTILS_LOGLEVEL", logging.INFO)  # Default log level if not set
 logger = logging.getLogger("search_dragon")
+logger.setLevel(sdllevel)
 logger.setLevel(llevel)
-handler.setFormatter(logging.Formatter(LOGGING_FORMAT))  # Apply format
 logger.addHandler(handler)
 
-# Log a message indicating the logger setup
-logger.info(
-    f"Logger instanced with level: {llevel}, using {'Rich' if USE_RICH else 'standard'} handler."
-)

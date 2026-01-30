@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
-from dbt_pipeline_utils import logger
-from dbt_pipeline_utils.p_utils.general import read_file, find_repo_root
+from dbt_pipeline_utils import logger, find_repo_root
+from dbt_pipeline_utils.p_utils.general import read_file
 from dbt_pipeline_utils.p_utils.factory_functions import build_pipeline_objects
 from dbt_pipeline_utils.p_utils.configs import StudyConfig
 
@@ -47,8 +47,6 @@ def main():
 
 
     for table_name, obj in pipeline_objects.items():
-        logger.info(f"\n\n\n{table_name.upper()} - PROCESSING")
-
         obj.structure.copy_import_macros()
 
         obj.structure.import_org_data()

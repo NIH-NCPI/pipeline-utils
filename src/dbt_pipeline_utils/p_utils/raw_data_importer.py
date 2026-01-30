@@ -24,22 +24,24 @@ class RawDataImporter:
             )
             if result.stderr and "ERROR" in result.stderr:
                 logger.error(
-                    f"❌ DuckDB import failed with error:\n%s\nTable:{fq_tablename}",
+                    f"❌ DuckDB import failed with error:\n\nTable:{fq_tablename}",
                     result.stderr.strip(),
                 )
             else:
                 logger.info(
-                    f"✅ Executed DuckDB SQL successfully. Table:{fq_tablename}\n%s"
+                    f"✅ Executed DuckDB import successfully. Table:{fq_tablename}\n"
                 )
                 if result.stdout:
-                    logger.warning("stdout:\n%s", result.stdout.strip())
+                    logger.warning("stdout:\n", result.stdout.strip())
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"❌ Subprocess failed with return code:\n%s\n{args}", e.returncode)
+            logger.error(
+                f"❌ Subprocess failed with return code:\n{e.returncode}\n{args}"
+            )
             if e.stderr:
-                logger.error("stderr:\n%s", e.stderr.strip())
+                logger.error("stderr:\n", e.stderr.strip())
             if e.stdout:
-                logger.warning("stdout:\n%s", e.stdout.strip())
+                logger.warning("stdout:\n", e.stdout.strip())
 
         except Exception as ex:
             logger.exception("❌ Unexpected error during Duckdb import:")

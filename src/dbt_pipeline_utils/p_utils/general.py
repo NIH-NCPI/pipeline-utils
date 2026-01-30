@@ -303,14 +303,6 @@ def normalize_name(
     return result
 
 
-def find_repo_root():
-    current = Path.cwd()
-
-    for parent in [current, *current.parents]:
-        if any(parent.glob("*requirements.txt")):
-            return parent.resolve()
-
-    raise RuntimeError("Could not find repo root containing requirements.txt")
 
 
 if __name__ == "__main__":

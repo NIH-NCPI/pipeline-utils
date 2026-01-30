@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
-from dbt_pipeline_utils import logger
-from dbt_pipeline_utils.p_utils.general import read_file, find_repo_root
+from dbt_pipeline_utils import logger, find_repo_root
+from dbt_pipeline_utils.p_utils.general import read_file
 from dbt_pipeline_utils.p_utils.factory_functions import build_pipeline_objects
 from dbt_pipeline_utils.p_utils.configs import StudyConfig
 
@@ -57,7 +57,7 @@ def main():
     any_obj.structure.copy_profiles_yml()
 
     for table_name, obj in pipeline_objects.items():
-        logger.info(f"\n{table_name.upper()} - PROCESSING")
+        logger.info(f"Table:{table_name} - file generation STARTED")
 
         obj.structure.generate_stg_dds()
 
@@ -67,4 +67,4 @@ def main():
 
         obj.structure.generate_run_script()
 
-        logger.info(f"{table_name.upper()} - GENERATION COMPLETE")
+        logger.info(f"Table:{table_name} - file generation COMPLETE")
