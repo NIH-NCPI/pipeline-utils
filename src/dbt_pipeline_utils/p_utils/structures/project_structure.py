@@ -556,6 +556,16 @@ def get_model_names(self, prefix, table_list):
         ))
     return model_list
 
+def import_org_data(self):
+
+    for df in self.df_identifiers:
+
+        raw_data_csv_path = (self.paths["study_data_dir"] / df).resolve()
+
+        dbt_tablename = normalize_name(df, trailing=False, extension="drop")
+
+        macro_args = f"{{fq_tablename: '{dbt_tablename}', csv_path: '{raw_data_csv_path}'}}"
+        run_dbt_macro(macro_args, "register_external_sources")
 
 if __name__ == "__main__":
     import doctest

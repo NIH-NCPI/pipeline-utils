@@ -7,13 +7,15 @@ from dbt_pipeline_utils.p_utils.structures.project_structure import (
     StructureBC,
 )
 from dbt_pipeline_utils.p_utils.sql_model_generator import SqlModelGenerator
-from dbt_pipeline_utils.p_utils.raw_data_importer import RawDataImporter
-
+from dbt_pipeline_utils.p_utils.import_functions import extract_table_schema, execute_pg_copy
 from dbt_pipeline_utils.p_utils.general import (
+    read_file,
     write_file,
     normalize_name,
     copy_directory,
     copy_file,
+    run_dbt_macro,
+    get_db_vars,
 )
 from importlib.resources import files, as_file
 from pathlib import Path
@@ -350,18 +352,24 @@ class IncStructureSC(StructureBC):
 
             write_file(out_path, content, mode="create")
 
+
     def import_org_data(self):
-        importer = RawDataImporter()
 
         for df in self.df_identifiers:
 
             raw_data_csv_path = (self.paths["study_data_dir"] / df).resolve()
-
             dbt_tablename = normalize_name(df, trailing=False, extension="drop")
+            ddict_path = self.paths["study_data_dir"] / Path(f"{self.dd_identifier}")
+            dd = read_file(ddict_path)
+            # Use extract_columns to get structured column data
+            column_data_list = self.extract_columns(dd, self.dd_format)
+            column_defs = extract_table_schema(column_data_list)
 
-            args = f"{{fq_tablename: '{dbt_tablename}', csv_path: '{raw_data_csv_path}'}}"
+            db_vars = get_db_vars(self.paths["home_profiles"], self.db_profile)
 
-            importer.import_data(dbt_tablename, args)
+            macro_args = f"{{tb_schema: '{db_vars['schema']}', tablename: '{dbt_tablename}', columns: {column_defs}, src_data_csv_path: '{raw_data_csv_path}'}}"
+            run_dbt_macro(macro_args, "register_external_sources_pg")
+            execute_pg_copy(dbt_table_name=dbt_tablename, raw_data_csv_path=raw_data_csv_path, db_vars=db_vars)
 
     def copy_static_export_dir(self):
 
