@@ -20,7 +20,7 @@ dependencies = ["rich",
                 "duckdb",
                 "sqlparse",
                 "protobuf==5.29.5", # dbt core and adapters require specific versions, do check GH advisory db: CVE-2025-4565
-                "locutus @ git+https://github.com/NIH-NCPI/locutus"
+                "locutus @ git+https://github.com/NIH-NCPI/locutus@v2.2.9"
                 ]
 
 dynamic = ["version"]
@@ -35,5 +35,5 @@ where = ["src"]  # list of folders that contain the packages (["."] by default)
 dbt_pipeline_utils = ["data/static/files/**", "data/static/macros/**"]
 
 [project.scripts]
-generate_pipeline = "dbt_pipeline_utils.p_utils.actions.trigger_generation:main"
-import_data = "dbt_pipeline_utils.p_utils.actions.trigger_import:main"
+generate_pipeline = "dbt_pipeline_utils.p_utils.actions.generate_pipeline:main"
+generate_dbt_project = "dbt_pipeline_utils.p_utils.actions.generate_dbt_project:main"

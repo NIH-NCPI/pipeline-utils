@@ -26,7 +26,6 @@ from dbt_pipeline_utils.p_utils.files import (
     copy_file,
 )
 from dbt_pipeline_utils.p_utils.sql_model_generator import SqlModelGenerator
-from dbt_pipeline_utils.p_utils.dags_generator import DagGenerator
 from dbt_pipeline_utils.p_utils.common import DD_FORMATS
 from dbt_pipeline_utils.p_utils.dbt_testing import DbtTesting
 
@@ -47,10 +46,16 @@ class StructureBC:
             return getattr(self.context, name)
         raise AttributeError(name)
 
+    # ------------------------------------------------------------------
+    # YAML-driven path resolution (shared by all structures)
+    # ------------------------------------------------------------------
+
     def _load_path_config(self) -> dict:
-        """Load and cache the structure's path config YAML, resolving like other project paths using _resolve_root."""
+        """Load and cache the structure's path config YAML."""
         if not hasattr(self, "_path_config_cache"):
-            config_path = Path(self._resolve_root("repo_root") / self.proj_config_path)
+            config_path = Path(self.proj_config_path)
+            if not config_path.is_absolute():
+                config_path = self.study_config_path.parent / config_path
             with config_path.open() as fh:
                 self._path_config_cache = yaml.safe_load(fh)
         return self._path_config_cache
@@ -214,28 +219,28 @@ class StructureBC:
 
         write_file(filepath, data, mode=mode)
 
-    def dbt_project_add_tags(
+    def dbt_project_add_models(
         self,
         filepath: Path,
-        study_id: str,
+        table_names: list[str],
+        dbtp_defs: dict,
     ) -> None:
         """
-        Add +tags under the correct study group(s) in dbt_project.yml.
+        Maintain global model defaults and remove generated per-model entries.
         """
         filepath = filepath / "dbt_project.yml"
         existing = get_existing_yaml(filepath)
 
         all_models = existing.setdefault("models", {})
 
-        pkg_name = existing.get("name")
-        if pkg_name and pkg_name in all_models:
-            pkg_models = all_models[pkg_name]
-        else:
-            pkg_models = all_models
-        config_key = pkg_models.get(self.project_name, {})
-        study_group = config_key.setdefault(study_id, {})
-        # Set +tags directly under the study_id group
-        study_group["+tags"] = [study_id]
+        materialized = dbtp_defs.get("+materialized")
+        if materialized is not None and "+materialized" not in all_models:
+            all_models["+materialized"] = materialized
+
+        # Remove generated table entries; schema is managed at group level.
+        for table_id in table_names:
+            table_id = normalize_name(table_id, trailing=False, extension='drop')
+            all_models.pop(table_id, None)
 
         write_file(filepath, existing, mode="overwrite")
 
@@ -329,9 +334,7 @@ class StructureBC:
 
         for idx, row in df.iterrows():
             try:
-                variable_name = self.as_str_or_none(
-                    row.get(column_map["variable_name"])
-                )
+                variable_name = self.as_str_or_none(row.get(column_map["variable_name"]))
                 formatted_variable_name = (
                     normalize_name(variable_name, extension="drop")
                     if variable_name
@@ -743,11 +746,21 @@ class StructureBC:
 
         for _stage, stage_cfg in config.get("dbt_project_stages", {}).items():
             dir_path = self.paths[stage_cfg["dir_key"]]
+            tables = getattr(self, stage_cfg["tables_attr"])
             self.dbt_project_add_vars(dir_path, {"vars": {}})
+            self.dbt_project_add_models(
+                dir_path,
+                tables,
+                {"+materialized": self.default_materialized},
+            )
 
             # Ensure stable models are also schema-pinned.
             if stage_cfg["dbtp_def"] == "src":
-                self.dbt_project_add_tags(dir_path, self.study_id)
+                self.dbt_project_add_models(
+                    dir_path,
+                    self.stb_prefixed_tables,
+                    {"+materialized": self.default_materialized},
+                )
 
         # Apply schema at model-group level instead of per-model.
         for proj in project_defs:
@@ -1019,11 +1032,6 @@ class StructureBC:
             output_dir=self.get_stage_path("export", "docs_dir"),
             doc_blocks=all_doc_blocks,
         )
-
-    def generate_dag(self):
-        daggen = DagGenerator(study_id=self.study_id, project_name=self.project_name, dag_id=self.dag_id)
-
-        daggen.generate_dag_from_study_config(self.paths["pl_dag_dir"])
 
     # ------------------------------------------------------------------
     # Copy methods (enabled/disabled per structure via features config)

@@ -1,10 +1,6 @@
-from jinja2 import Template
-from typing import Type, Dict, ClassVar, Any, List
-from pathlib import Path
-from dbt_pipeline_utils import logger
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from dbt_pipeline_utils.p_utils.common import type_mapping
-from dbt_pipeline_utils.p_utils.general import normalize_name, write_file
+from dbt_pipeline_utils.p_utils.files import normalize_name
 
 
 @dataclass(slots=True)
@@ -12,35 +8,6 @@ class SqlModelGenerator:
     study_id: str
     project_id: str
 
-    def generate_study_sql(
-        self,
-        dd_filepath
-        ):
-        """Generates staging SQL files dynamically for each table based on the data dictionary."""
-
-        src_table_key = normalize_name(
-            dd_filepath, trailing=False, extension="drop"
-        )
-        column_data = self.load_column_data(dd_filepath)
-
-        column_definitions = []
-        id_list = []
-        for col_name, column_name_code, _, col_data_type, *_ in column_data.get(
-            src_table_key, []
-        ):
-            if column_name_code.endswith("_id"):
-                id_list.append(column_name_code)
-            sql_type = type_mapping.get(col_data_type, "text")
-            column_definitions.append(
-                f'"{col_name}"::{sql_type} as "{column_name_code}"'
-            )
-
-        sql_content = f"""
-select 
-    ROW_NUMBER() OVER () AS "{self.project_id}_index",
-{",\n       ".join(column_definitions)}
-"""
-        return sql_content.strip()
 
     def generate_cdm_sql(
         self,
@@ -158,69 +125,43 @@ select
             "    " + ",\n    ".join(column_defs)
         )
 
-    # def generate_macro_model_files(
-    #     self,
-    #     config,
-    #     *,
-    #     stage: str,
-    #     metadata_dir_key: str,
-    #     model_dir_key: str,
-    #     macro_dir_key: str | None = None,
-    #     table_prefix: str | None = None,
-    #     model_type: str = "model",
-    #     macro_params: str | None = None,
-    #     write_mode: str = "overwrite",
-    # ):
-    #     """
-    #     Generate dbt model and/or macro files for a given stage (int or exp).
-
-    #     """
-
-    #     for tablename, info in config.data_dictionary.items():
-
-    #         dd_filepath = self.paths[metadata_dir_key] / info.identifier
-
-    #         sql_content = sqlgen.generate_cdm_sql(
-    #             column_data=column_data,
-    #             dd_key=dd_key,
-    #             stage=stage,
-    #         )
-
-    #         # Normalize table / model name
-    #         model_name_parts = [table_prefix, tablename] if table_prefix else [tablename]
-    #         model_name = normalize_name(
-    #             model_name_parts,
-    #             trailing=False,
-    #             extension="drop",
-    #         )
-
-    #         if model_type == "model_macro":
-    #             if not macro_dir_key:
-    #                 raise ValueError("macro_dir_key is required for model_macro")
-
-    #             macro_content = self.convert_to_macro(
-    #                 model_name,
-    #                 sql_content,
-    #                 params=macro_params,
-    #             )
-
-    #             macro_filepath = self.paths[macro_dir_key] / f"{model_name}.sql"
-    #             write_file(macro_filepath, macro_content, mode=write_mode)
-
-    #             # Generate model that triggers the macro
-    #             model_content = self.generate_int_macro_model(model_name)
-
-    #         elif model_type == "model":
-    #             model_content = self.convert_to_model(
-    #                 sql_content,
-    #                 model_name,
-    #             )
-
-    #         elif model_type == "attr_model":
-    #             model_content = self.convert_to_attr_model(sql_content)
-
-    #         else:
-    #             raise ValueError(f"Unrecognized model_type: {model_type}")
-
-    #         model_filepath = self.paths[model_dir_key] / f"{model_name}.sql"
-    #         write_file(model_filepath, model_content, mode=write_mode)
+    def duckdb_src_query(self, column_data: dict, table_path: str, dd_key: str = None) -> str: # type: ignore
+        """
+        Generate DuckDB SQL query using column_data directly.
+        
+        Args:
+            column_data: Dictionary with table key containing list of column tuples
+            table_path: Path to the CSV file
+            dd_key: Key to access column_data. If None, uses first available key.
+        
+        Returns:
+            SQL query string
+        """
+        # Get the key if not provided
+        if dd_key is None:
+            dd_key = next(iter(column_data.keys())) if column_data else None
+        
+        if not dd_key or dd_key not in column_data:
+            raise ValueError(f"Invalid dd_key '{dd_key}'. Available keys: {list(column_data.keys())}")
+        
+        # Extract column definitions from column_data
+        columns = []
+        csv_columns = {}
+        
+        for col_original, col_formatted, *_ in column_data[dd_key]:
+            columns.append(f'\n    "{col_original}"::TEXT AS "{col_formatted}"')
+            csv_columns[col_original] = 'VARCHAR'
+        
+        # Build column definitions string for CSV read
+        csv_col_defs = ",\n        ".join(
+            f"'{col}': 'VARCHAR'" for col in csv_columns.keys()
+        )
+        
+        query = f"""{{{{ config(materialized='table') }}}}
+SELECT
+{",".join(columns)}
+FROM read_csv('{table_path}', AUTO_DETECT=FALSE, HEADER=TRUE, columns={{
+        {csv_col_defs}
+    }})"""
+        
+        return query

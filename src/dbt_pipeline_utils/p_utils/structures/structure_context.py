@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from dbt_pipeline_utils.p_utils.general import normalize_name
+from typing import List, Optional
+from dbt_pipeline_utils.p_utils.files import normalize_name
 
 
 @dataclass
@@ -21,9 +21,13 @@ class StructureContext:
     dd_format: str
     study_id: str
     project_id: str
+    project_name: str
+    dag_id: str
+    pipeline_structure: str
     db_profile: str
     int_model_name: str
     int_model_prefix: str
+    combined_model_prefix: str
     int_format: str
     src_tables: List[str]
     int_tables: List[str]
@@ -42,11 +46,8 @@ class StructureContext:
     study_data_dir: Optional[Path] = None
     pipeline_data_dir: Optional[Path] = None
 
-    src_dbtp_def: Dict[str, Any] = field(default_factory=dict)
-    int_dbtp_def: Dict[str, Any] = field(default_factory=dict)
-    exp_dbtp_def: Dict[str, Any] = field(default_factory=dict)
-
     # Derived / internal fields
+    _study_schema_prefix: str = field(init=False, default="")
     _src_table_prefix: str = field(init=False, default="")
 
     _stb_table_prefix: str = field(init=False, default="")
@@ -55,6 +56,10 @@ class StructureContext:
     _int_gen_dd_name: str = field(init=False, default="")
     _int_stg_additions_name: str = field(init=False, default="")
     _src_prefixed_tables: List[str] = field(init=False, default="")
+    _stb_prefixed_tables: List[str] = field(init=False, default="")
+
+    _combined_table_prefix: str = field(init=False, default="")
+    _combined_prefixed_tables: List[str] = field(init=False, default="")
 
     _exp_table_prefix: str = field(init=False, default="")
     _exp_prefixed_tables: List[str] = field(init=False, default="")
@@ -68,14 +73,23 @@ class StructureContext:
         if self.pipeline_data_dir:
             self._pipeline_data_dir = Path(self.pipeline_data_dir)
 
-        self._src_table_prefix = normalize_name([self.project_id,self.study_id, 'src'], trailing=True, extension='drop')
+        structure_key = self.pipeline_structure or self.project_id
+
+        self._study_schema_prefix = normalize_name(
+            [structure_key, self.study_id], trailing=False, extension="drop"
+        )
+
+        self._src_table_prefix = normalize_name([structure_key, self.study_id, 'src'], trailing=True, extension='drop')
         self._src_prefixed_tables = [
             f"{self._src_table_prefix}{t}" for t in self.src_tables
         ]
 
         self._stb_table_prefix = normalize_name(
-            [self.project_id, self.study_id, "stb"], trailing=True, extension="drop"
+            [structure_key, self.study_id, "stb"], trailing=True, extension="drop"
         )
+        self._stb_prefixed_tables = [
+            f"{self._stb_table_prefix}{t}" for t in self.int_tables
+        ]
 
         self._int_table_prefix = normalize_name(
             self.int_model_prefix,
@@ -88,6 +102,15 @@ class StructureContext:
             f'{self._int_table_prefix}{t}' for t in self.int_tables
         ]
 
+        self._combined_table_prefix = normalize_name(
+            self.combined_model_prefix,
+            trailing=True,
+            extension="drop",
+        )
+        self._combined_prefixed_tables = [
+            f"{self._combined_table_prefix}{t}" for t in self.int_tables
+        ]
+
         self._exp_table_prefix = normalize_name(
             self.exp_model_prefix,
             trailing=True,
@@ -96,6 +119,9 @@ class StructureContext:
         self._exp_prefixed_tables = [
             f"{self._exp_table_prefix}{t}" for t in self.exp_tables
         ]
+
+        # Ensure dag_id property is set (calls setter, sets _dag_id)
+        self.dag_id = getattr(self, 'dag_id', None) or f"{self.study_id}_dbt_dag"
 
     # Properties / getters & setters
     @property
@@ -170,6 +196,34 @@ class StructureContext:
         self._project_id = value
 
     @property
+    def project_name(self) -> str:
+        return self._project_name
+
+    @project_name.setter
+    def project_name(self, value: str):
+        if not value:
+            raise ValueError("project_name cannot be empty")
+        self._project_name = value
+
+    @property
+    def dag_id(self) -> str:
+        return self._dag_id     
+    
+    @dag_id.setter
+    def dag_id(self, value: str):
+        if not value:
+            raise ValueError("dag_id cannot be empty")
+        self._dag_id = value
+
+    @property
+    def pipeline_structure(self) -> str:
+        return self._pipeline_structure
+
+    @pipeline_structure.setter
+    def pipeline_structure(self, value: str):
+        self._pipeline_structure = value or "inc"
+
+    @property
     def db_profile(self) -> str:
         return self._db_profile
 
@@ -202,6 +256,14 @@ class StructureContext:
     @int_format.setter
     def int_format(self, value: str):
         self._int_format = value
+
+    @property
+    def combined_model_prefix(self) -> str:
+        return self._combined_model_prefix
+
+    @combined_model_prefix.setter
+    def combined_model_prefix(self, value: str):
+        self._combined_model_prefix = value or "combined"
 
     @property
     def src_tables(self) -> str:
@@ -316,34 +378,42 @@ class StructureContext:
     def pipeline_data_dir(self, value: Optional[Path]):
         self._pipeline_data_dir = Path(value) if value else None
 
-    @property
-    def src_dbtp_def(self) -> Dict[str, Any]:
-        return self._src_dbtp_def
-
-    @src_dbtp_def.setter
-    def src_dbtp_def(self, value: Dict[str, Any]):
-        self._src_dbtp_def = value or {}
-
-    @property
-    def int_dbtp_def(self) -> Dict[str, Any]:
-        return self._int_dbtp_def
-
-    @int_dbtp_def.setter
-    def int_dbtp_def(self, value: Dict[str, Any]):
-        self._int_dbtp_def = value or {}
-
-    @property
-    def exp_dbtp_def(self) -> Dict[str, Any]:
-        return self._exp_dbtp_def
-
-    @exp_dbtp_def.setter
-    def exp_dbtp_def(self, value: Dict[str, Any]):
-        self._exp_dbtp_def = value or {}
-
     # Derived / read-only properties
     @property
     def src_table_prefix(self) -> str:
         return self._src_table_prefix
+
+    @property
+    def study_schema_prefix(self) -> str:
+        return self._study_schema_prefix
+
+    @property
+    def src_schema(self) -> str:
+        return f"{self._study_schema_prefix}_src"
+
+    @property
+    def int_schema(self) -> str:
+        return f"{self._study_schema_prefix}_int"
+
+    @property
+    def stb_schema(self) -> str:
+        return f"{self._study_schema_prefix}_stb"
+
+    @property
+    def access_schema(self) -> str:
+        return self.int_model_name
+
+    @property
+    def export_schema(self) -> str:
+        return f"{self.exp_model_name}_export"
+
+    @property
+    def combined_schema(self) -> str:
+        return "combined"
+
+    @property
+    def default_materialized(self) -> str:
+        return "table"
 
     @property
     def src_prefixed_tables(self) -> str:
@@ -352,6 +422,10 @@ class StructureContext:
     @property
     def stb_table_prefix(self) -> str:
         return self._stb_table_prefix
+
+    @property
+    def stb_prefixed_tables(self) -> str:
+        return self._stb_prefixed_tables
 
     @property
     def int_table_prefix(self) -> str:
@@ -378,6 +452,14 @@ class StructureContext:
         return self._exp_prefixed_tables
 
     @property
+    def combined_table_prefix(self) -> str:
+        return self._combined_table_prefix
+
+    @property
+    def combined_prefixed_tables(self) -> str:
+        return self._combined_prefixed_tables
+
+    @property
     def study_config_dir(self) -> Optional[Path]:
         return self._study_config_path.parent if self._study_config_path else None
 
@@ -387,6 +469,8 @@ class StructureContext:
             "dd_identifier": self._dd_identifier,
             "study_id": self._study_id,
             "project_id": self._project_id,
+            "project_name": self._project_name,
+            "dag_id": self._dag_id,
             "db_profile": self._db_profile,
             "study_tables": self._study_tables,
             "int_model_name": self._int_model_name,

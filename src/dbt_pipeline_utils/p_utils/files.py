@@ -5,19 +5,16 @@ To run integration tests with 'doctests':
 python -m dbt_pipeline_utils.p_utils.general
 """
 
-import os
 import yaml
 import re
 import pandas as pd
-import dbt_pipeline_utils
 from pathlib import Path
 import hashlib
-# from dbt_pipeline_utils.p_utils..common import *
 from typing import Iterable
 from dbt_pipeline_utils.p_utils.common import MAX_IDENTIFIER_LEN, SAFE_CHARS
 
 from dbt_pipeline_utils import logger
-import subprocess
+
 
 
 def read_file(filepath):
@@ -94,7 +91,7 @@ def write_file(
             return
 
         # TEXT FILES
-        if suffix in {".md", ".sh"}:
+        if suffix in {".md", ".sh", ".py"}:
             file_mode = "a" if mode == "merge" else "w"
             with filepath.open(file_mode, encoding="utf-8") as f:
                 f.write(data)
@@ -265,7 +262,10 @@ def normalize_string(input: str | Path, *, extension: str = "drop") -> str:
 
 
 def normalize_name(
-    input: Iterable[str | None], *, trailing: bool = False, extension: str = "drop"
+    input: str | Path | Iterable[str | None],
+    *,
+    trailing: bool = False,
+    extension: str = "drop",
 ) -> str:
     """
     Join a list of parts with underscores and normalize the result.
@@ -293,8 +293,12 @@ def normalize_name(
 
     """
 
-    if isinstance(input, list):
-        input = "_".join(str(i) for i in input)
+    if isinstance(input, Path):
+        input = str(input)
+    elif isinstance(input, str):
+        pass
+    else:
+        input = "_".join(str(i) for i in input if i)
 
     result = normalize_string(input, extension=extension)
 
@@ -304,76 +308,4 @@ def normalize_name(
     return result
 
 
-def get_db_vars(profiles_path:str, db_profile:str):
-    """Loads specific key-value pairs from a YAML file based on the profile type."""
-    profile_keys = ["host", "user", "dbname", "schema", "port"] # update if not, pipeline_db: postgres
 
-    config = read_file(profiles_path)
-    env_section = config.get(db_profile, {}).get("outputs", {}).get("dev", {})
-
-    env_vars = {}
-    for key in profile_keys:
-        value = env_section.get(key)
-
-
-        # Use regex to detect and extract the environment variable name
-        if value and isinstance(value, str):
-            match = re.match(r"\{\{\s*env_var\('([\w_]+)'\)\s*\}\}", value)
-            if match:
-                env_var_name = match.group(1)  # Extract the environment variable name
-                env_vars[key] = os.getenv(env_var_name, "")  # Retrieve its value from the environment
-            else:
-                env_vars[key] = value  # Use the value directly if no placeholder is found
-            # import pdb; pdb.set_trace()  
-        else:
-            env_vars[key] = value
-
-    return env_vars
-
-def run_dbt_macro(macro_args: str, db_macro:str):
-    """
-    The dbt duckdb adapter has it's own functions to allow for csv import.
-
-    This function will run using an import macro within the dbt project itself.
-    """
-
-    try:
-        result = subprocess.run(
-            [
-                "dbt",
-                "run-operation",
-                db_macro,
-                "--args",
-                macro_args
-            ],
-            check=True,
-        )
-        if result.stderr and "ERROR" in result.stderr:
-            logger.error(
-                f"❌ {db_macro}  failed with error:\n\nargs:{macro_args}",
-                result.stderr.strip(),
-            )
-        else:
-            logger.info(
-                f"✅ Executed {db_macro} successfully. args:{macro_args}\n"
-            )
-            if result.stdout:
-                logger.warning("stdout:\n", result.stdout.strip())
-
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            f"❌ Subprocess failed with return code:\n{e.returncode}\n{macro_args}"
-        )
-        if e.stderr:
-            logger.error("stderr:\n", e.stderr.strip())
-        if e.stdout:
-            logger.warning("stdout:\n", e.stdout.strip())
-
-    except Exception as ex:
-        logger.exception(f"❌ Unexpected error during macro execution: {db_macro} :")
-
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod(verbose=True)
