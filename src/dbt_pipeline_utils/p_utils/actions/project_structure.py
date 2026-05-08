@@ -864,7 +864,7 @@ class StructureBC:
         sqlgen = SqlModelGenerator(study_id=self.study_id, project_id=self.project_id)
 
         if stage == "stb":
-            model_dir = self.get_stage_path("intermediate", "models_dir")
+            model_dir = self.get_stage_path("stable", "models_dir")
             macro_dir = None
             table_prefix = self.stb_table_prefix
             src_table_prefix = self.src_table_prefix
@@ -1010,7 +1010,7 @@ class StructureBC:
             all_doc_blocks.extend(doc_blocks)
 
         self.generate_column_descriptions(
-            output_dir=self.get_stage_path("intermediate", "docs_dir"),
+            output_dir=self.get_stage_path("stable", "docs_dir"),
             doc_blocks=all_doc_blocks,
         )
 

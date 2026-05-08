@@ -557,12 +557,14 @@ class StructureBC:
             table_name = normalize_name(
                 [table_prefix, tablename], trailing=False, extension="drop"
             )
-
-            columns, doc_blocks = self.build_column_metadata(
-                table_name=table_name,
-                table_prefix=table_prefix,
-                dd_filepath=dd_filepath,
-            )
+            try: 
+                columns, doc_blocks = self.build_column_metadata(
+                    table_name=table_name,
+                    table_prefix=table_prefix,
+                    dd_filepath=dd_filepath,
+                )
+            except:
+                import pdb; pdb.set_trace()
 
             models.append(
                 {
@@ -779,6 +781,7 @@ class StructureBC:
             input_dd_dir=self.paths["static_int_metadata_dir"],
             output_dir=int_yml_dir,
         )
+
         self.generate_models_yml(
             config=exp_config,
             table_prefix=self.exp_table_prefix,
@@ -851,7 +854,7 @@ class StructureBC:
         sqlgen = SqlModelGenerator(study_id=self.study_id, project_id=self.project_id)
 
         if stage == "stb":
-            model_dir = self.get_stage_path("intermediate", "models_dir")
+            model_dir = self.get_stage_path("stable", "models_dir")
             macro_dir = None
             table_prefix = self.stb_table_prefix
             src_table_prefix = self.src_table_prefix
@@ -997,7 +1000,7 @@ class StructureBC:
             all_doc_blocks.extend(doc_blocks)
 
         self.generate_column_descriptions(
-            output_dir=self.get_stage_path("intermediate", "docs_dir"),
+            output_dir=self.get_stage_path("stable", "docs_dir"),
             doc_blocks=all_doc_blocks,
         )
 

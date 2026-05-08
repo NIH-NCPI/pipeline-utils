@@ -1,10 +1,8 @@
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 from dbt_pipeline_utils.p_utils.files import normalize_name
 
 
-@dataclass
 class StructureContext:
     """
     Centralized, validated context object for structure generation.
@@ -13,56 +11,85 @@ class StructureContext:
     Internal storage uses underscore-backed fields.
     """
 
-    # Required fields (constructor args)
-    table_name: str
-    df_identifiers: List[str]
-    dataset_id: str
-    dd_identifier: str
-    dd_format: str
-    study_id: str
-    project_id: str
-    project_name: str
-    dag_id: str
-    pipeline_structure: str
-    db_profile: str
-    int_model_name: str
-    int_model_prefix: str
-    combined_model_prefix: str
-    int_format: str
-    src_tables: List[str]
-    int_tables: List[str]
-    exp_tables: List[str]
-    exp_model_name: str
-    exp_model_prefix: str
-    exp_format: str
-    study_tables: List[str]
-    src_model_type: str
-    stb_model_type: str
-    int_model_type: str
-    exp_model_type: str
+    def __init__(
+        self,
+        table_name: str,
+        df_identifiers: List[str],
+        dataset_id: str,
+        dd_identifier: str,
+        dd_format: str,
+        study_id: str,
+        project_id: str,
+        project_name: str,
+        dag_id: str,
+        pipeline_structure: str,
+        db_profile: str,
+        int_model_name: str,
+        int_model_prefix: str,
+        combined_model_prefix: str,
+        int_format: str,
+        src_tables: List[str],
+        int_tables: List[str],
+        exp_tables: List[str],
+        exp_model_name: str,
+        exp_model_prefix: str,
+        exp_format: str,
+        study_tables: List[str],
+        src_model_type: str,
+        stb_model_type: str,
+        int_model_type: str,
+        exp_model_type: str,
+        study_config_path: Optional[Path] = None,
+        study_data_dir: Optional[Path] = None,
+        pipeline_data_dir: Optional[Path] = None,
+    ) -> None:
+        # Initialize derived field backing stores
+        self._study_schema_prefix: str = ""
+        self._src_table_prefix: str = ""
+        self._stb_table_prefix: str = ""
+        self._int_table_prefix: str = ""
+        self._int_gen_dd_name: str = ""
+        self._int_stg_additions_name: str = ""
+        self._int_prefixed_tables: List[str] = []
+        self._src_prefixed_tables: List[str] = []
+        self._stb_prefixed_tables: List[str] = []
+        self._combined_table_prefix: str = ""
+        self._combined_prefixed_tables: List[str] = []
+        self._exp_table_prefix: str = ""
+        self._exp_prefixed_tables: List[str] = []
 
-    # Optional / defaulted fields
-    study_config_path: Optional[Path] = None
-    study_data_dir: Optional[Path] = None
-    pipeline_data_dir: Optional[Path] = None
+        # Set all fields via property setters (triggers validation)
+        self.table_name = table_name
+        self.df_identifiers = df_identifiers
+        self.dataset_id = dataset_id
+        self.dd_identifier = dd_identifier
+        self.dd_format = dd_format
+        self.study_id = study_id
+        self.project_id = project_id
+        self.project_name = project_name
+        self.dag_id = dag_id
+        self.pipeline_structure = pipeline_structure
+        self.db_profile = db_profile
+        self.int_model_name = int_model_name
+        self.int_model_prefix = int_model_prefix
+        self.combined_model_prefix = combined_model_prefix
+        self.int_format = int_format
+        self.src_tables = src_tables
+        self.int_tables = int_tables
+        self.exp_tables = exp_tables
+        self.exp_model_name = exp_model_name
+        self.exp_model_prefix = exp_model_prefix
+        self.exp_format = exp_format
+        self.study_tables = study_tables
+        self.src_model_type = src_model_type
+        self.stb_model_type = stb_model_type
+        self.int_model_type = int_model_type
+        self.exp_model_type = exp_model_type
+        self.study_config_path = study_config_path
+        self.study_data_dir = study_data_dir
+        self.pipeline_data_dir = pipeline_data_dir
 
-    # Derived / internal fields
-    _study_schema_prefix: str = field(init=False, default="")
-    _src_table_prefix: str = field(init=False, default="")
-
-    _stb_table_prefix: str = field(init=False, default="")
-
-    _int_table_prefix: str = field(init=False, default="")
-    _int_gen_dd_name: str = field(init=False, default="")
-    _int_stg_additions_name: str = field(init=False, default="")
-    _src_prefixed_tables: List[str] = field(init=False, default="")
-    _stb_prefixed_tables: List[str] = field(init=False, default="")
-
-    _combined_table_prefix: str = field(init=False, default="")
-    _combined_prefixed_tables: List[str] = field(init=False, default="")
-
-    _exp_table_prefix: str = field(init=False, default="")
-    _exp_prefixed_tables: List[str] = field(init=False, default="")
+        self.__post_init__()
 
     def __post_init__(self):
         # Convert paths to Path objects
@@ -120,9 +147,6 @@ class StructureContext:
             f"{self._exp_table_prefix}{t}" for t in self.exp_tables
         ]
 
-        # Ensure dag_id property is set (calls setter, sets _dag_id)
-        self.dag_id = getattr(self, 'dag_id', None) or f"{self.study_id}_dbt_dag"
-
     # Properties / getters & setters
     @property
     def table_name(self) -> str:
@@ -139,13 +163,13 @@ class StructureContext:
         return self._df_identifiers
 
     @df_identifiers.setter
-    def df_identifiers(self, value: str):
+    def df_identifiers(self, value: List[str]):
         if not value:
             raise ValueError("df_identifiers cannot be empty")
         self._df_identifiers = value
 
     @property
-    def dataset_id(self) -> List[str]:
+    def dataset_id(self) -> str:
         return self._dataset_id
 
     @dataset_id.setter
@@ -208,7 +232,7 @@ class StructureContext:
     @property
     def dag_id(self) -> str:
         return self._dag_id     
-    
+
     @dag_id.setter
     def dag_id(self, value: str):
         if not value:
@@ -266,27 +290,27 @@ class StructureContext:
         self._combined_model_prefix = value or "combined"
 
     @property
-    def src_tables(self) -> str:
+    def src_tables(self) -> List[str]:
         return self._src_tables
 
     @src_tables.setter
-    def src_tables(self, value: str):
+    def src_tables(self, value: List[str]):
         self._src_tables = value
 
     @property
-    def int_tables(self) -> str:
+    def int_tables(self) -> List[str]:
         return self._int_tables
 
     @int_tables.setter
-    def int_tables(self, value: str):
+    def int_tables(self, value: List[str]):
         self._int_tables = value
 
     @property
-    def exp_tables(self) -> str:
+    def exp_tables(self) -> List[str]:
         return self._exp_tables
 
     @exp_tables.setter
-    def exp_tables(self, value: str):
+    def exp_tables(self, value: List[str]):
         self._exp_tables = value
 
     @property
@@ -416,7 +440,7 @@ class StructureContext:
         return "table"
 
     @property
-    def src_prefixed_tables(self) -> str:
+    def src_prefixed_tables(self) -> List[str]:
         return self._src_prefixed_tables
 
     @property
@@ -424,7 +448,7 @@ class StructureContext:
         return self._stb_table_prefix
 
     @property
-    def stb_prefixed_tables(self) -> str:
+    def stb_prefixed_tables(self) -> List[str]:
         return self._stb_prefixed_tables
 
     @property
@@ -440,7 +464,7 @@ class StructureContext:
         return self._int_stg_additions_name
 
     @property
-    def int_prefixed_tables(self) -> str:
+    def int_prefixed_tables(self) -> List[str]:
         return self._int_prefixed_tables
 
     @property
@@ -448,7 +472,7 @@ class StructureContext:
         return self._exp_table_prefix
 
     @property
-    def exp_prefixed_tables(self) -> str:
+    def exp_prefixed_tables(self) -> List[str]:
         return self._exp_prefixed_tables
 
     @property
@@ -456,7 +480,7 @@ class StructureContext:
         return self._combined_table_prefix
 
     @property
-    def combined_prefixed_tables(self) -> str:
+    def combined_prefixed_tables(self) -> List[str]:
         return self._combined_prefixed_tables
 
     @property

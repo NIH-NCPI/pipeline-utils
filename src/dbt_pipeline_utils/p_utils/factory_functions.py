@@ -53,39 +53,24 @@ class PipelineObject:
 
     def _resolve_secondary_config_path(
         self,
-        base_dir: Path,
+        static_dir: Path,
         stage: str,
         model_name: str,
     ) -> Path:
-        """Resolve metadata config path across known static-data layouts."""
-        relative = Path(
-            f"common_data_models/{stage}/metadata/{model_name}/_{model_name}_study.yaml"
-        )
+        """Resolve metadata config path."""
 
-        candidates: list[Path] = [
-            base_dir / "static" / relative,
-            base_dir / relative,
-            self.study_data_dir / "static" / relative,
-            self.study_data_dir / "temp" / "static" / relative,
-            self.study_data_dir.parent / "temp" / "static" / relative,
-        ]
+        try:
+            return Path(
+                f"{static_dir}/common_data_models/{stage}/{model_name}/_{model_name}_study.yaml"
+            ).absolute()
 
-        checked: list[Path] = []
-        for candidate in candidates:
-            resolved = candidate.resolve()
-            if resolved in checked:
-                continue
-            checked.append(resolved)
-            if resolved.exists():
-                return resolved
+        except Exception as e:
+            raise RuntimeError(f"Error constructing config path: {e}")
 
-        checked_paths = "\n".join(f" - {path}" for path in checked)
-        raise FileNotFoundError("Config not found. Checked paths:\n" f"{checked_paths}")
 
-    # def __post_init__(self) -> None:
-    #     self.db = DatabaseBC.define_db(self.pipeline_db)
-
-    def finalize(self) -> None:
+    def finalize(
+        self, static_int_metadata_dir: Path, static_exp_metadata_dir: Path
+    ) -> None:
         """
         Finalize the PipelineObject by building the StructureContext,
         defining the structure, and computing paths.
@@ -94,6 +79,8 @@ class PipelineObject:
             raise RuntimeError(
                 "Internal and Export configs must be loaded before finalize()"
             )
+        if self.dag_id is None:
+            raise RuntimeError("dag_id must be set before finalize()")
 
         s_context = StructureContext(
             table_name=self.table_name,
@@ -135,19 +122,18 @@ class PipelineObject:
 
         self.paths = self.structure.get_paths()
 
-        # Ensure DAG stage always has a resolved output directory path.
-        if "dag_dir" not in self.paths:
-            self.paths["dag_dir"] = Path(
-                self.paths.get("pl_dag_dir", Path(self.paths["pl_dir"]) / "dags")
-            )
-        self.paths["dag_dir"].mkdir(parents=True, exist_ok=True)
+        # Ensure config dirs are available in both self.paths and structure.paths for downstream use.
+        self.paths["static_int_metadata_dir"] = static_int_metadata_dir
+        self.paths["static_exp_metadata_dir"] = static_exp_metadata_dir
+        self.structure.paths["static_int_metadata_dir"] = static_int_metadata_dir
+        self.structure.paths["static_exp_metadata_dir"] = static_exp_metadata_dir
 
-    def load_internal_config(self, static_dir: Path) -> None:
+    def load_internal_config(self, static_dir: Path) -> Path:
         """
         Load a secondary YAML config once paths are initialized.
         """
         config_path = self._resolve_secondary_config_path(
-            base_dir=static_dir,
+            static_dir,
             stage="internal",
             model_name=self.int_model_name,
         )
@@ -155,18 +141,24 @@ class PipelineObject:
         raw_config = read_file(config_path)
         self.int_config = InternalConfig.from_dict(raw_config)
 
-    def load_export_config(self, static_dir: Path) -> None:
+        # return the config path to be placed into the other PipelineObjects
+        return config_path.parent
+
+    def load_export_config(self, static_dir: Path) -> Path:
         """
         Load a secondary YAML config once paths are initialized.
         """
         config_path = self._resolve_secondary_config_path(
-            base_dir=static_dir,
+            static_dir,
             stage="export",
             model_name=self.exp_model_name,
         )
 
         raw_config = read_file(config_path)
         self.exp_config = ExportConfig.from_dict(raw_config)
+
+        # return the config path to be placed into the other PipelineObjects
+        return config_path.parent
 
 
 def build_pipeline_objects( static_dir: Path,
@@ -211,15 +203,15 @@ def build_pipeline_objects( static_dir: Path,
 
     try:
 
-        any_po.load_internal_config(static_dir) 
+        static_int_metadata_dir = any_po.load_internal_config(static_dir)
+
     except:
-        import pdb
-        pdb.set_trace()
-    any_po.load_export_config(static_dir)
+        raise RuntimeError("Failed to load internal config.")
+    static_exp_metadata_dir = any_po.load_export_config(static_dir)
 
     for po in pipeline_objects.values():
         po.int_config = any_po.int_config
         po.exp_config = any_po.exp_config
-        po.finalize()
+        po.finalize(static_int_metadata_dir, static_exp_metadata_dir)
 
     return pipeline_objects

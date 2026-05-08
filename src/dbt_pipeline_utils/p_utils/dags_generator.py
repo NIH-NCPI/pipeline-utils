@@ -72,7 +72,7 @@ profile_config = ProfileConfig(
             ) from exc
 
 
-    def generate_dag_from_study_config(self, dag_dir: str) -> Path:
+    def generate_dag_from_study_config(self, dag_dir: Path) -> Path:
         """Generate an Airflow Cosmos DAG file from study YAML config."""
 
         merged: dict[str, Any] = dict()

@@ -1,7 +1,6 @@
-
-    
 class DbtTesting:
 
+    @staticmethod
     def format_tests(tests, col, enums=None):
         """
         Formats the tests string into dbt-compatible test definitions.
@@ -14,6 +13,7 @@ class DbtTesting:
         Returns:
             list: A list of dictionaries representing the formatted dbt tests.
         """
+
         test_list = tests.split("|")
 
         if enums is not None:

@@ -22,7 +22,7 @@ class StudyStudyConfig:
     project_id: str
     db_profile: str
     study_data_dir: str
-    dag_id: Optional[str] = None
+    dag_id: str
 
 
 @dataclass(frozen=True)
