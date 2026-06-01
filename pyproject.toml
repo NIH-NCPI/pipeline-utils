@@ -16,10 +16,10 @@ requires-python = ">3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dependencies = ["rich",
-                "duckdb",
+dependencies = ["pandas",
+                "PyYAML",
+                "python-dotenv",
                 "sqlparse",
-                "protobuf==5.29.5", # dbt core and adapters require specific versions, do check GH advisory db: CVE-2025-4565
                 "locutus @ git+https://github.com/NIH-NCPI/locutus@v2.2.9"
                 ]
 
