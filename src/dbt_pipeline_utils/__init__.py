@@ -1,11 +1,49 @@
-from search_dragon import logger as getlogger
 import logging
+from rich.logging import RichHandler
+
+from pathlib import Path
+from dotenv import load_dotenv
 from os import getenv
 
-# Set the logging config
-LOGGING_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+def find_repo_root():
+    """Find the repository root by looking for a requirements.txt file."""
 
-# Create a logger
-llevel = getenv("LOCUTUS_LOGLEVEL", logging.WARN)
-logger = getlogger(logformat=LOGGING_FORMAT, loglevel=llevel)
-logger.info(f"Logger instanced with level: {llevel}")
+    current = Path.cwd()
+
+    for parent in [current, *current.parents]:
+        if any(parent.glob("*requirements.txt")):
+            return parent.resolve()
+
+    raise RuntimeError("Could not find repo root containing requirements.txt")
+
+
+# Load the .env file
+repo_root = find_repo_root()
+env_path = repo_root / ".env"
+success = load_dotenv(dotenv_path=env_path, override=True)
+
+
+#setup logging
+# Map PUTILS_LOGLEVEL to an integer log level
+LOGLEVEL_STRING = getenv("PUTILS_LOGLEVEL", "INFO").strip().upper()
+llevel = logging._nameToLevel.get(LOGLEVEL_STRING, logging.INFO)
+LOGGING_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+TIME_FORMAT = "%H:%M:%S"
+
+
+handler = RichHandler(
+    show_time=False,  # Disable Rich's own timestamp
+    show_level=True,  # Show log level
+    show_path=False,  # Disable source file path in logs
+    rich_tracebacks=True,  # Optional: Enable rich traceback formatting
+)
+handler.setFormatter(logging.Formatter(fmt=LOGGING_FORMAT, datefmt=TIME_FORMAT))
+
+# Setup package logger
+package_logger = logging.getLogger("dbt_pipeline_utils")
+package_logger.setLevel(llevel)
+if not package_logger.hasHandlers():
+    package_logger.addHandler(handler)
+
+# For backward compatibility, expose as 'logger'
+logger = package_logger

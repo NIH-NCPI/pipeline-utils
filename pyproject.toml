@@ -16,17 +16,24 @@ requires-python = ">3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dependencies = ["synapseclient",
-                "rich"]
+dependencies = ["pandas",
+                "PyYAML",
+                "python-dotenv",
+                "sqlparse",
+                "locutus @ git+https://github.com/NIH-NCPI/locutus@v2.2.9"
+                ]
 
 dynamic = ["version"]
 
 [tool.setuptools_scm]
-version_file = "src/locutus_util/_version.py"
+version_file = "src/dbt_pipeline_utils/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
 
+[tool.setuptools.package-data]
+dbt_pipeline_utils = ["data/static/files/**", "data/static/macros/**"]
+
 [project.scripts]
-generate_model_docs = "dbt_pipeline_utils.scripts.generate_docs:main"
-import_csv_data = "dbt_pipeline_utils.scripts.process_study:main"
+generate_pipeline = "dbt_pipeline_utils.p_utils.actions.generate_pipeline:main"
+generate_dbt_project = "dbt_pipeline_utils.p_utils.actions.generate_dbt_project:main"

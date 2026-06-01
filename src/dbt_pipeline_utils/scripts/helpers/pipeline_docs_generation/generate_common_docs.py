@@ -1,11 +1,10 @@
 from dbt_pipeline_utils.scripts.helpers.common import *
 from dbt_pipeline_utils.scripts.helpers.general import *
-from dbt_pipeline_utils.scripts.helpers.pipeline_docs_generation.model_tests import format_tests
 import re
 
 class DocGeneration():
     """Base class for defining pipeline stages."""
-
+    
     def extract_columns(self, df, dd_format):
         """
         Extracts relevant column information based on the dictionary format.
@@ -17,21 +16,21 @@ class DocGeneration():
         for idx, row in df.iterrows():
             try:
                 # variable_name (required — if NaN, fallback to 'unknown')
-                variable_name = row.get(column_map["variable_name"]) or None
-                formatted_variable_name = (
-                        str(variable_name).lower().replace(" ", "_").replace(",", "_").replace("-", "_")
-                    ) or None
+                variable_name = row.get(column_map["variable_name"])
+                if pd.isna(variable_name):
+                    variable_name = "unknown"
+                    formatted_variable_name = "unknown"
+                else:
+                    formatted_variable_name = (
+                        str(variable_name).lower().replace(" ", "_").replace(",", "_")
+                    )
 
+                # optional fields
                 description = row.get(column_map["description"]) or None
-
-                data_type = row.get(column_map["data_type"])
-                if pd.isna(data_type):
-                    data_type = "string"
-
+                data_type = row.get(column_map["data_type"]) or None
                 enumerations = row.get(column_map["enumerations"]) or None
                 comment = row.get(column_map["comment"]) or None
                 src_variable_name = row.get(column_map["src_variable_name"]) or None
-                tests = row.get(column_map["tests"]) or None
 
                 column_data_list.append((
                     variable_name,
@@ -41,7 +40,6 @@ class DocGeneration():
                     enumerations,
                     comment,
                     src_variable_name,
-                    tests
                 ))
 
             except Exception as e:
@@ -50,7 +48,7 @@ class DocGeneration():
                 raise
 
         return column_data_list
-
+    
     def load_src_column_data(self, src_only=None):
         """Loads column names, descriptions, and data types from CSV files and stores them in a dictionary."""
         column_data = {}
@@ -78,6 +76,7 @@ class DocGeneration():
                 column_data[stg_table_key] = self.extract_columns(stg_df, "pipeline_format")
 
         return column_data
+
 
     def generate_dbt_project_yaml(self):
         study_info = {}
@@ -112,6 +111,7 @@ class DocGeneration():
 
         write_file(filepath, dbt_config)
 
+
     def generate_dbt_models_yml(self, column_data, output_dir, ftd_model=None):
         """
         Generates dbt models.yml file for each table in its respective directory, including src and staging models.
@@ -136,12 +136,10 @@ class DocGeneration():
                 columns_metadata = [
                     {
                         "name": col_name_code,
-                        "description": f'{{{{ doc("{generate_doc_block_name(table_name, col_name_code)}") }}}}',
+                        "description": f'{{{{ doc("{table_name}_{col_name_code}") }}}}',
                         "data_type": col_data_type,
-                        **({"tests": format_tests(tests, col_name_code, enums)} if tests is not None else {}),
-
                     }
-                    for col_name, col_name_code, _, col_data_type, enums, _, _, tests in column_data.get(
+                    for col_name, col_name_code, _, col_data_type, _, _, _ in column_data.get(
                         table_name, []
                     )
                 ]
@@ -175,36 +173,37 @@ class DocGeneration():
         source_tables = []
 
         for table_id, table_info in self.data_files.items():
-            for file in table_info.get("identifier"):
-                src_filename = Path(file).stem
-                columns_metadata = [
-                    {
-                        "name": col_name,
-                        "description": f'{{{{ doc("{generate_doc_block_name(src_filename, col_name_code)}") }}}}'
-                    }
+            src_filename = Path(table_info['identifier']).stem
+            columns_metadata = [
+                {
+                    "name": col_name,
+                    "description": f'{{{{ doc("{src_filename}_{col_name_code}") }}}}'
+                }
 
-                    for col_name, col_name_code, _, _, _, _, _, _  in column_data.get(f"{src_filename}", [])
-                ]
+                for col_name, col_name_code, _, _, _, _, _ in column_data.get(f"{src_filename}", [])
+            ]
 
-                source_tables.append({
-                    "name": src_filename,
-                    "description": table_info.get("description", f"Source table for {src_filename}."),
-                    "columns": columns_metadata
-                })
 
-            sources_yaml = {
-                "version": 2,
-                "sources": [
-                    {
-                        "name": self.study_id,
-                        "schema": self.src_schema,
-                        "tables": source_tables
-                    }
-                ]
-            }
+            source_tables.append({
+                "name": src_filename,
+                "description": table_info.get("description", f"Source table for {src_filename}."),
+                "columns": columns_metadata
+            })
 
-            filepath = output_dir / "sources.yml"
-            write_file(filepath, sources_yaml, overwrite=True)
+        sources_yaml = {
+            "version": 2,
+            "sources": [
+                {
+                    "name": self.study_id,
+                    "schema": self.src_schema,
+                    "tables": source_tables
+                }
+            ]
+        }
+
+        filepath = output_dir / "sources.yml"
+        write_file(filepath, sources_yaml, overwrite=True)
+
 
     def generate_column_descriptions(self, column_data, output_dir, ftd_model=None):
         """Generates a separate column_descriptions.md for each table in its respective docs directory."""
@@ -245,8 +244,8 @@ class DocGeneration():
                     new_descriptions.append(table_desc_block)
                     existing_col_doc_ids.add(table_desc_id)
 
-                for col_name, col_name_code, col_description, _, _, _, _, _  in column_data.get(table_key, []):
-                    col_doc_id = generate_doc_block_name(table_key, col_name_code)
+                for col_name, col_name_code, col_description, _, _, _, _ in column_data.get(table_key, []):
+                    col_doc_id = f"{table_key}_{col_name_code}"
                     col_desc_block = f"{{% docs {col_doc_id} %}}\n{col_description}\n{{% enddocs %}}\n"
 
                     if col_doc_id not in existing_col_doc_ids:
@@ -260,6 +259,7 @@ class DocGeneration():
             write_file(filepath, data, overwrite=True) # Needs to add any new data to an existing file.
         else:
             logger.debug(f"No updates needed: {filepath}")
+
 
     def generate_model_descriptions(self, output_dir):
         """Generates model_descriptions.md using the specified format."""
@@ -293,6 +293,7 @@ class DocGeneration():
 
                 write_file(filepath, data)
 
+
     def generate_src_sql_files(self, output_dir):
         """Generates SQL files dynamically for each table in its respective directory."""
 
@@ -302,11 +303,12 @@ class DocGeneration():
                 src_table_id = self.get_src_table_key(table_id)
                 sql_content = f"""{{{{ config(materialized='table') }}}}
 
-select * from {self.src_schema}.{table_id}
-"""
+        select * from {self.src_schema}.{table_id}
+        """
                 filepath = output_dir / Path(table_id) / f"{src_table_id}.sql"
 
                 write_file(filepath, sql_content, overwrite=True)
+        
 
     def generate_stg_sql_files(self, column_data, output_dir):
         """Generates staging SQL files dynamically for each table based on the data dictionary."""
@@ -318,7 +320,7 @@ select * from {self.src_schema}.{table_id}
 
             column_definitions = []
             id_list = []
-            for col_name, column_name_code, _, col_data_type, _, _, _, _  in column_data.get(src_table, []):
+            for col_name, column_name_code, _, col_data_type, _, _, _ in column_data.get(src_table, []):
                 if column_name_code.endswith("_id"):
                     id_list.append(column_name_code) 
                 sql_type = type_mapping.get(col_data_type, "text")
@@ -326,27 +328,27 @@ select * from {self.src_schema}.{table_id}
 
             sql_content = f"""{{{{ config(materialized='table') }}}}
 
-with source as (
-    select 
-      {",\n       ".join(column_definitions)}
-    from {{{{ source('{self.study_id}','{src_table}') }}}}
-)
+    with source as (
+        select 
+        {",\n       ".join(column_definitions)}
+        from {{{{ source('{self.study_id}','{src_table}') }}}}
+    )
 
-select 
-  ROW_NUMBER() OVER () AS ftd_index,
-  source.*
-from source
-"""
+    select 
+        *
+        from source
+    """
 
             # Write SQL file to the correct directory
             write_file(filepath, sql_content)
+
 
     def generate_stg_dds(self):
         """Generates staging SQL files dynamically for each table based on the data dictionary.
         open the src dd and apply minimal transformations"""
 
         for table_id, table_info in self.data_dictionary.items():
-            src_table_key = self.get_src_table_key(table_id)
+            src_table_key = f"{self.study_id}_src_{table_id}"
             src_dd_path = self.paths["src_data_dir"]
             filepath = src_dd_path / f"{table_id}_stg_dd.csv"
 
@@ -360,7 +362,7 @@ from source
 
             column_mapping = {
                 col_name: column_name_code
-                for col_name, column_name_code, _, _, _, _, _, _ in column_data.get(src_table_key, [])
+                for col_name, column_name_code, _, _, _ in column_data.get(src_table_key, [])
             }
 
             format_type = table_info.get("format")
@@ -386,8 +388,11 @@ from source
             t_path = src_dd_path / Path(f"ftd_transformations/{table_id}_stg_additions_dd.csv")
             if t_path.exists():  
                 transformations = read_file(t_path)
-                stg_df = pd.concat([stg_df, transformations])
+                stg_df = pd.concat([stg_df, transformations], ignore_index=True)
             else:
                 pass
 
             write_file(filepath, stg_df)
+            
+
+
