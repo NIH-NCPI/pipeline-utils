@@ -1,13 +1,13 @@
 """
 Shared --release CLI plumbing: lets any of the generate_* CLIs pull one or
 more GitHub release assets into memory as additional dd sources, combined
-with (or instead of) local -i files/directories.
+with (or instead of) local -i files/directories. A "*.zip" release asset is
+automatically expanded into its contained "*_dd.*"/"*-dd.*" files.
 """
 
 import argparse
 
-from dbt_pipeline_utils.p_utils.dd_sources import pull_release_dd
-
+from dbt_pipeline_utils.p_utils.dd_sources import pull_release_dd_sources
 
 def add_release_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
@@ -35,8 +35,8 @@ def resolve_dd_sources(args: argparse.Namespace) -> list:
     sources = list(args.dd_filepaths or [])
 
     for repo_url, asset_name in args.release or []:
-        sources.append(
-            pull_release_dd(
+        sources.extend(
+            pull_release_dd_sources(
                 repo_url,
                 asset_name,
                 tag=args.release_tag,

@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 
 
@@ -63,6 +65,71 @@ def pull_release_dd(
     return InMemoryDataDictionary(
         filename=asset_name, content=content, source=repository_url, version=tag
     )
+
+
+def pull_release_dd_sources(
+    repository_url: str,
+    asset_name: str,
+    *,
+    tag: str = "latest",
+    token: str | None = None,
+    refresh: bool = False,
+) -> list[InMemoryDataDictionary]:
+    """
+    Pull one named GitHub release asset into memory as one or more dd
+    sources.
+
+    If asset_name is a "*.zip" archive (e.g. a "project-artifacts.zip"
+    release bundle), it's opened in memory and every entry matching the
+    "*_dd.*"/"*-dd.*" convention is returned as its own dd source - other
+    files in the zip (schemas, enumerations, etc.) are ignored. Otherwise,
+    this returns a single-item list, same as pull_release_dd().
+
+    Nothing is ever written to disk.
+    """
+    from dbt_pipeline_utils.p_utils.github_release import pull_release_asset_to_memory
+
+    content = pull_release_asset_to_memory(
+        repository_url, asset_name, tag=tag, token=token, refresh=refresh
+    )
+
+    if not asset_name.lower().endswith(".zip"):
+        return [
+            InMemoryDataDictionary(
+                filename=asset_name, content=content, source=repository_url, version=tag
+            )
+        ]
+
+    sources = []
+    with zipfile.ZipFile(BytesIO(content)) as archive:
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+
+            member_name = Path(info.filename).name
+            if not (
+                member_name.lower().endswith(
+                    ("_dd.csv", "-dd.csv", "_dd.xlsx", "-dd.xlsx")
+                )
+            ):
+                continue
+
+            sources.append(
+                InMemoryDataDictionary(
+                    filename=member_name,
+                    content=archive.read(info),
+                    source=f"{repository_url}!{asset_name}",
+                    version=tag,
+                )
+            )
+
+    if not sources:
+        raise FileNotFoundError(
+            f"No '*_dd.*'/'*-dd.*' files found inside {asset_name} "
+            f"from {repository_url}@{tag}."
+        )
+
+    return sources
 
 
 def resolve_dd_sources(dd_sources: DDSource | Iterable[DDSource]) -> list[DDSource]:

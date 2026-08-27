@@ -20,6 +20,7 @@ Each invocation is independent - no shared study/project config is required.
 import argparse
 from pathlib import Path
 
+from dbt_pipeline_utils.p_utils.github_release import resolve_repository_url
 from dbt_pipeline_utils.p_utils.models_yml import generate_models_yml_from_release_asset
 
 
@@ -83,7 +84,7 @@ def main():
     args = parser.parse_args()
 
     generate_models_yml_from_release_asset(
-        args.repository_url,
+        resolve_repository_url(args.repository_url),
         args.asset_name,
         args.models_yml_output,
         tag=args.tag,

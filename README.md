@@ -5,23 +5,77 @@ Standalone, composable CLI tools for generating dbt files (`models.yml`, `source
 
 ## Commands
 
-All commands accept a data dictionary file, a list of files, or a directory (every `*_dd.*`/`*-dd.*` file in it) as input. All tools also accept `-p`/`--table-prefix`, prepended to every table/model name derived from a dd filename (e.g. dd `accesspolicy_dd.csv` + prefix `inc_access` -> table/model name `inc_access_accesspolicy`).
+All generators accept DD inputs from local files/directories and/or GitHub release assets in memory. Use `-i` for local DD paths and `--release` for release assets.
 
-- `generate_models_yml -i <dds> -o <models.yml> [-p <table_prefix>] [-d <_column_descriptions.md>] [-f <dd_format>]`
-  Builds/updates a dbt `models.yml`. Models and columns are matched by name and merged in place: unchanged entries keep their position, changed ones update, new ones are added, and ones no longer backed by a dd are dropped - so re-running produces a small, readable diff instead of rewriting the whole file.
-- `generate_sources_yml -i <dds> -o <sources.yml> -s <source_name> --schema <schema> [-p <table_prefix>] [-d <_column_descriptions.md>]`
-  Same merge behavior as `generate_models_yml`, but for a `sources.yml` source block.
-- `generate_sql_models -i <dds> -o <output_dir> [-p <table_prefix>] [--from-clause-template "{{ source('x', '{table_name}') }}"] [--reference-dir <dir>]`
-  Generates one `<table>.sql` per dd. That file is created once and never overwritten again - it's owned by data devs, who hand-edit it to harmonize the data. A `<table>_generated.sql` file is always refreshed with the current dd-derived SQL, so after re-running you can diff the two to see exactly what changed in the dd since the model was last harmonized:
-  ```
-  diff models/int/patients.sql models/int/patients_generated.sql
-  ```
+### generate_models_yml
+
+Builds/updates a dbt `models.yml` from DDs. Merge mode preserves stable ordering and produces clean diffs.
+
+| Argument | Required | Default | When to use |
+|---|---|---|---|
+| `-i`, `--dd-filepaths` | No* | `[]` | Use for one or more local DD files and/or directories. |
+| `-o`, `--models-yml-output` | Yes | None | Path to output `models.yml`. |
+| `-p`, `--table-prefix` | No | `None` | Prefix all model names for namespacing (`inc_access_*`, etc.). |
+| `-f`, `--dd-format` | No | `ftd_dd` | Use when DD columns follow a non-default mapping. |
+| `-d`, `--docs-output` | No | `None` | Append/update `_column_descriptions.md` docs blocks. |
+| `--no-tests` | No | `False` | Skip dbt test generation from DD `tests` column. |
+| `-m`, `--mode` | No | `merge` | `create` for first-time files, `overwrite` to replace file, `merge` for diff-friendly updates. |
+| `--version-log` | No | `None` | Track source/version/hash changes per model in a CSV over time. |
+| `--release REPO_URL ASSET_NAME` | No* | None | Pull DD assets from GitHub releases in memory (repeatable). |
+| `--release-tag` | No | `latest` | Pin to a specific release tag/version. |
+| `--release-token` | No | `None` | Required for private repositories. |
+| `--refresh` | No | `False` | Force fresh GitHub pull; otherwise in-process in-memory cache is used. |
+
+`*` You must provide at least one input source via `-i` or `--release`.
+
+### generate_sources_yml
+
+Builds/updates a dbt `sources.yml` block from DDs with the same merge semantics.
+
+| Argument | Required | Default | When to use |
+|---|---|---|---|
+| `-i`, `--dd-filepaths` | No* | `[]` | Local DD files/directories. |
+| `-o`, `--sources-yml-output` | Yes | None | Path to output `sources.yml`. |
+| `-s`, `--source-name` | Yes | None | Target dbt source block name (`sources: - name:`). |
+| `--schema` | Yes | None | Database schema for that source block. |
+| `-p`, `--table-prefix` | No | `None` | Prefix all source table names. |
+| `-f`, `--dd-format` | No | `ftd_dd` | Non-default DD column mapping. |
+| `-d`, `--docs-output` | No | `None` | Append/update source column docs file. |
+| `--version-log` | No | `None` | Track source/version/hash changes per table. |
+| `--release REPO_URL ASSET_NAME` | No* | None | Add release DD asset(s) as in-memory inputs. |
+| `--release-tag` | No | `latest` | Pull from a specific release tag. |
+| `--release-token` | No | `None` | Private repo auth. |
+| `--refresh` | No | `False` | Bypass in-memory cache and re-pull. |
+
+### generate_sql_models
+
+Generates dev-owned model SQL plus always-refreshed `_generated.sql` reference files.
+
+| Argument | Required | Default | When to use |
+|---|---|---|---|
+| `-i`, `--dd-filepaths` | No* | `[]` | Local DD files/directories. |
+| `-o`, `--output-dir` | Yes | None | Directory for hand-edited `<table>.sql` files. |
+| `-p`, `--table-prefix` | No | `None` | Prefix output table/model names. |
+| `-f`, `--dd-format` | No | `ftd_dd` | Non-default DD column mapping. |
+| `--from-clause-template` | No | `None` | Emit `from` clauses (for example dbt `source(...)`) using `{table_name}` placeholder. |
+| `--reference-dir` | No | Same as `--output-dir` | Write refreshed `<table>_generated.sql` files to a separate directory. |
+| `--version-log` | No | `None` | Track DD version/hash changes per table. |
+| `--release REPO_URL ASSET_NAME` | No* | None | Use release DD asset(s) in memory. |
+| `--release-tag` | No | `latest` | Pull from a specific release tag. |
+| `--release-token` | No | `None` | Private repo auth. |
+| `--refresh` | No | `False` | Force fresh pull instead of in-memory cache. |
+
+Example diff workflow:
+
+```bash
+diff models/int/patients.sql models/int/patients_generated.sql
+```
 
 There's no notion of a "stage" baked into the code - int/exp/whatever are just different directories/output paths you choose per call. Use separate `just sql` invocations with different `DD_DIR`, `SQL_DIR`, `TABLE_PREFIX`, and `FROM_CLAUSE_TEMPLATE` values for multiple model sets.
 
-## Pulling data dictionaries from a GitHub release
+## Release-backed Inputs
 
-All three tools also accept `--release <repo_url> <asset_name>` (repeatable), which pulls a named GitHub release asset into memory and uses it as an additional dd source - combine freely with `-i` local files, or omit `-i` entirely to use release assets only. No DD file is ever written to disk for a `--release` source. Options `--release-tag` (default `latest`), `--release-token` (for private repos), and `--refresh` (force a fresh pull, bypassing the in-memory cache) apply to every `--release` entry in the call:
+The `--release` argument is repeatable and can be combined with local `-i` paths. DD bytes are kept in memory and are not written to disk by the generators.
 
 ```bash
 generate_models_yml \
@@ -31,7 +85,42 @@ generate_models_yml \
     -p inc_access
 ```
 
-`generate_models_yml_from_release_asset <repo_url> <asset_name> -o <models.yml> [-t <tag>] [--token <token>] [--refresh] [-p <table_prefix>]` remains as a simpler, single-asset convenience command for `models.yml` specifically.
+For `REPO_URL`, you can use a full URL or these aliases:
+
+  - `kf` / `kf-access-model` -> `https://github.com/carrollaboratory/kf-access-model.git`
+  - `include` / `inc` / `include-access-model` -> `https://github.com/include-dcc/include-access-model.git`
+  - `common` / `common-access-model` -> `https://github.com/include-dcc/common-access-model.git`
+
+### generate_models_yml_from_release_asset
+
+Single-asset convenience CLI for `models.yml` generation.
+
+| Argument | Required | Default | When to use |
+|---|---|---|---|
+| `repository_url` | Yes | None | Full GitHub URL for release source repo. |
+| `asset_name` | Yes | None | Exact release asset filename. |
+| `-o`, `--models-yml-output` | Yes | None | Output `models.yml` path. |
+| `-t`, `--tag` | No | `latest` | Pull from specific release tag. |
+| `--token` | No | `None` | Private repo auth. |
+| `--refresh` | No | `False` | Force fresh pull (skip in-memory cache). |
+| `-n`, `--table-name` | No | Derived from asset name | Override inferred model name. |
+| `-p`, `--table-prefix` | No | `None` | Prefix model name. |
+| `-f`, `--dd-format` | No | `ftd_dd` | Non-default DD column mapping. |
+| `-d`, `--docs-output` | No | `None` | Append docs blocks. |
+| `--no-tests` | No | `False` | Skip test generation from DD tests column. |
+| `-m`, `--mode` | No | `merge` | `create`, `overwrite`, or `merge`. |
+| `--version-log` | No | `None` | Append change rows to version log CSV. |
+
+### list_release_assets
+
+Lists all assets attached to a release so you can confirm exact asset names before pulling them.
+
+| Argument | Required | Default | When to use |
+|---|---|---|---|
+| `repository_url` | Yes | None | Full GitHub URL or alias (`kf`, `include`, `inc`, `common`). |
+| `-t`, `--tag` | No | `latest` | Inspect a specific release tag. |
+| `--token` | No | `None` | Private repo auth. |
+| `--refresh` | No | `False` | Force metadata refresh instead of in-memory cache. |
 
 The pulled bytes are cached in memory per `(repository_url, asset_name, tag)`, so calling this again for the same version doesn't re-hit the network - pass `--refresh` to force a fresh pull (e.g. after re-publishing the same tag), or just point at a different tag to always fetch fresh.
 
@@ -49,7 +138,7 @@ Run the individual generators with the root `justfile`. Override variables befor
 just DD_DIR=data_dictionaries/access \
   MODELS_YML=models/access/__models.yml \
   MODELS_DOCS=models/access/_column_descriptions.md \
-  TABLE_PREFIX=inc_access models
+  TABLE_PREFIX=inc_access 
 
 just DD_DIR=data_dictionaries/raw \
   SOURCES_YML=models/staging/sources.yml \
@@ -73,6 +162,50 @@ just DD_DIR="" \
 ```
 
 Set `VERSION_LOG=path/to/dd_versions.csv` on any recipe to track what data dictionary version was used for each model, appended only when it changes.
+
+## Extracting one file from a ZIP release artifact
+
+Use `extract_release_artifact_file` to pull a ZIP release asset and extract either one file or a whole internal directory.
+
+| Argument | Required | Default | When to use |
+|---|---|---|---|
+| `repository` | Yes | None | Full GitHub URL or preset alias (`kf`, `include`, `inc`, `common`, etc.). |
+| `artifact_name` | Yes | None | ZIP release asset name (for example `project-artifacts.zip`). |
+| `internal_path` | Yes | None | File path inside ZIP for single-file extraction, or directory prefix for subtree copy. |
+| `output_path` | Yes | None | File destination for single-file extraction, or destination directory for subtree copy. |
+| `-t`, `--tag` | No | `latest` | Pull from a specific release tag. |
+| `--token` | No | `None` | Private repo auth. |
+| `--refresh` | No | `False` | Force fresh pull; otherwise in-memory cache is reused. |
+
+Single file example:
+
+```bash
+extract_release_artifact_file \
+  kf \
+  project-artifacts.zip \
+  data_dictionaries/patients_dd.csv \
+  /tmp/patients_dd.csv
+```
+
+Directory copy example:
+
+```bash
+extract_release_artifact_file \
+  kf \
+  project-artifacts.zip \
+  project/data-dictionary \
+  /tmp/data-dictionary
+```
+
+You can also use the `justfile` wrapper:
+
+```bash
+just RELEASE_REPO=kf \
+  RELEASE_ARTIFACT=project-artifacts.zip \
+  RELEASE_INTERNAL_PATH=data_dictionaries/patients_dd.csv \
+  RELEASE_OUTPUT_PATH=/tmp/patients_dd.csv \
+  extract-release-file
+```
 
 For non-GitHub-release sources, a project-specific importer can still be supplied via `DDS_PULL_COMMAND` and run with `just DDS_PULL_COMMAND='...' pull-dd` to populate `DD_DIR` before generation.
 

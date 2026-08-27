@@ -93,6 +93,13 @@ def read_data_dictionary(dd_source: DDSource, dd_format: str = "ftd_dd") -> list
             df = pd.read_csv(io.BytesIO(dd_source.content), dtype="string")
         elif suffix in {".xlsx", ".xls"}:
             df = pd.read_excel(io.BytesIO(dd_source.content))
+        elif suffix == ".zip":
+            raise ValueError(
+                f"'{dd_source.filename}' is a zip archive, not a single data dictionary. "
+                "Use --release (generate_models_yml/generate_sources_yml/generate_sql_models) "
+                "or pull_release_dd_sources() instead - it expands a *.zip release asset into "
+                "its contained *_dd.*/*-dd.* files automatically."
+            )
         else:
             raise ValueError(f"Unsupported data dictionary type: {suffix}")
     else:
