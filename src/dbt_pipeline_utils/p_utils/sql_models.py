@@ -15,9 +15,10 @@ what's changed in the dd since the model was last harmonized:
 
 from collections.abc import Iterable
 from pathlib import Path
+import re
 
 from dbt_pipeline_utils.p_utils.common import type_mapping
-from dbt_pipeline_utils.p_utils.files import write_file
+from dbt_pipeline_utils.p_utils.files import normalize_name, write_file
 from dbt_pipeline_utils.p_utils.models_yml import (
     DDSource,
     _resolve_dd_filepaths,
@@ -26,6 +27,11 @@ from dbt_pipeline_utils.p_utils.models_yml import (
     log_dd_versions,
     read_data_dictionary,
 )
+
+
+def _quote_identifier(name: str) -> str:
+    """Return a safely SQL-quoted identifier."""
+    return '"' + str(name).replace('"', '""') + '"'
 
 
 def build_select_sql(columns: list[dict], *, from_clause: str | None = None) -> str:
@@ -48,6 +54,35 @@ def build_select_sql(columns: list[dict], *, from_clause: str | None = None) -> 
         sql += f"\nfrom {from_clause}"
 
     return sql
+
+
+def build_src_select_sql(
+    columns: list[dict],
+    *,
+    source_name: str,
+    table_name: str,
+    materialized: str = "table",
+) -> str:
+    """
+    Build a src model SQL body that:
+    - includes dbt config(materialized=...)
+    - selects every DD column
+    - casts every selected value to text (string)
+    - aliases every output column to lower-snake
+    - reads from source(source_name, table_name)
+    """
+    lines = []
+    for col in columns:
+        source_col = _quote_identifier(col["src_variable_name"])
+        alias = col["formatted_variable_name"]
+        lines.append(f"{source_col}::text as {alias}")
+
+    return (
+        f"{{{{ config(materialized='{materialized}') }}}}\n\n"
+        "select\n    "
+        + ",\n    ".join(lines)
+        + f"\nfrom {{{{ source('{source_name}', '{table_name}') }}}}"
+    )
 
 
 def generate_sql_models(
@@ -121,3 +156,113 @@ def generate_sql_models(
 
     if version_log:
         log_dd_versions(version_log, version_entries)
+
+
+def generate_src_models(
+    dd_filepaths: DDSource | Iterable[DDSource],
+    output_dir: Path,
+    *,
+    source_name: str,
+    dd_format: str = "ftd_dd",
+    table_names: dict[str, str] | None = None,
+    table_prefix: str | None = None,
+    sql_file_prefix: str | None = None,
+    materialized: str = "table",
+    version_log: Path | None = None,
+) -> None:
+    """
+    Generate one src SQL model per DD source.
+
+    Each model:
+    - includes config(materialized='table')
+    - selects every DD column
+    - casts every value to text
+    - aliases every output column to lower-snake
+    - includes from {{ source(source_name, table_name) }}
+
+    table_prefix affects the table_name used in source(...).
+    sql_file_prefix affects only the generated SQL filename.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    table_names = table_names or {}
+    version_entries: list[tuple[str, dict]] = []
+
+    for dd_filepath in _resolve_dd_filepaths(dd_filepaths):
+        table_name = _resolve_table_name(dd_filepath, table_names, table_prefix)
+        columns = read_data_dictionary(dd_filepath, dd_format=dd_format)
+        sql = (
+            build_src_select_sql(
+                columns,
+                source_name=source_name,
+                table_name=table_name,
+                materialized=materialized,
+            )
+            + "\n"
+        )
+
+        model_name = (
+            normalize_name([sql_file_prefix, table_name], extension="drop")
+            if sql_file_prefix
+            else table_name
+        )
+        model_path = output_dir / f"{model_name}.sql"
+        model_path.write_text(sql, encoding="utf-8")
+
+        if version_log:
+            version_entries.append((model_name, dd_source_descriptor(dd_filepath)))
+
+    if version_log:
+        log_dd_versions(version_log, version_entries)
+
+
+def _table_base_from_stem(stem: str) -> str:
+    stem = re.sub(r"[_-](?:dd|dictionary)$", "", stem, flags=re.IGNORECASE)
+    return normalize_name(stem, extension="drop")
+
+
+def generate_stb_union_models(
+    dd_filepaths: DDSource | Iterable[DDSource],
+    output_dir: Path,
+    *,
+    studies_var: str = "inc_studies",
+    model_prefix: str = "combined",
+) -> int:
+    """
+    Generate one STB union model file per DD source.
+
+    Each generated file contains:
+    {{ config(materialized='table') }}
+
+    {{ combined_union_from_current_model(studies_var='...') }}
+
+    Sources may be local files/directories and/or in-memory release assets.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+    seen_model_names: set[str] = set()
+
+    for dd_filepath in _resolve_dd_filepaths(dd_filepaths):
+        stem = dd_filepath.stem if hasattr(dd_filepath, "stem") else Path(dd_filepath).stem
+        base_name = _table_base_from_stem(stem)
+        model_name = (
+            normalize_name([model_prefix, base_name], extension="drop")
+            if model_prefix
+            else base_name
+        )
+
+        if model_name in seen_model_names:
+            continue
+        seen_model_names.add(model_name)
+
+        model_path = output_dir / f"{model_name}.sql"
+        model_sql = (
+            "{{ config(materialized='table') }}\n\n"
+            f"{{{{ combined_union_from_current_model(studies_var='{studies_var}') }}}}\n"
+        )
+        model_path.write_text(model_sql, encoding="utf-8")
+        written += 1
+
+    return written

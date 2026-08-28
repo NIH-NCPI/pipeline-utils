@@ -40,6 +40,23 @@ class InMemoryDataDictionary:
 DDSource = Path | str | InMemoryDataDictionary
 
 
+def _is_dd_filename(filename: str) -> bool:
+    """Return True if filename matches supported DD suffix conventions."""
+    lower = filename.lower()
+    return lower.endswith(
+        (
+            "_dd.csv",
+            "-dd.csv",
+            "_dd.xlsx",
+            "-dd.xlsx",
+            "_dictionary.csv",
+            "-dictionary.csv",
+            "_dictionary.xlsx",
+            "-dictionary.xlsx",
+        )
+    )
+
+
 def pull_release_dd(
     repository_url: str,
     asset_name: str,
@@ -80,13 +97,17 @@ def pull_release_dd_sources(
     sources.
 
     If asset_name is a "*.zip" archive (e.g. a "project-artifacts.zip"
-    release bundle), it's opened in memory and every entry matching the
-    "*_dd.*"/"*-dd.*" convention is returned as its own dd source - other
-    files in the zip (schemas, enumerations, etc.) are ignored. Otherwise,
-    this returns a single-item list, same as pull_release_dd().
+    release bundle), it's opened in memory and every entry matching one of
+    these conventions is returned as its own dd source:
+    - "*_dd.*" / "*-dd.*"
+    - "*_dictionary.*" / "*-dictionary.*"
+    Matching is case-insensitive. Other files in the zip (schemas,
+    enumerations, etc.) are ignored. Otherwise, this returns a single-item
+    list, same as pull_release_dd().
 
     Nothing is ever written to disk.
     """
+
     from dbt_pipeline_utils.p_utils.github_release import pull_release_asset_to_memory
 
     content = pull_release_asset_to_memory(
@@ -107,11 +128,7 @@ def pull_release_dd_sources(
                 continue
 
             member_name = Path(info.filename).name
-            if not (
-                member_name.lower().endswith(
-                    ("_dd.csv", "-dd.csv", "_dd.xlsx", "-dd.xlsx")
-                )
-            ):
+            if not _is_dd_filename(member_name):
                 continue
 
             sources.append(
@@ -125,7 +142,8 @@ def pull_release_dd_sources(
 
     if not sources:
         raise FileNotFoundError(
-            f"No '*_dd.*'/'*-dd.*' files found inside {asset_name} "
+            f"No DD files matching '*_dd.*'/'*-dd.*'/'*_dictionary.*'/'*-dictionary.*' "
+            f"were found inside {asset_name} "
             f"from {repository_url}@{tag}."
         )
 
@@ -137,11 +155,12 @@ def resolve_dd_sources(dd_sources: DDSource | Iterable[DDSource]) -> list[DDSour
     Normalize a single path/source, a directory, or a list of paths/sources
     into a flat list. InMemoryDataDictionary entries pass through unchanged.
 
-    Directories are scanned for data dictionary files only, i.e. anything
-    named "*_dd.*" or "*-dd.*" (the standard dd naming convention) - other
-    files in the directory are ignored. Explicitly-listed files are always
-    included regardless of naming.
+    Directories are scanned for data dictionary files only, i.e. filenames
+    ending with "_dd"/"-dd" or "_dictionary"/"-dictionary" before the
+    extension (csv/xlsx, case-insensitive). Other files in the directory are
+    ignored. Explicitly-listed files are always included regardless of naming.
     """
+
     if isinstance(dd_sources, (str, Path, InMemoryDataDictionary)):
         dd_sources = [dd_sources]
 
@@ -154,7 +173,7 @@ def resolve_dd_sources(dd_sources: DDSource | Iterable[DDSource]) -> list[DDSour
         path = Path(entry)
         if path.is_dir():
             dd_files = {
-                p for pattern in ("*_dd.*", "*-dd.*") for p in path.glob(pattern) if p.is_file()
+                p for p in path.iterdir() if p.is_file() and _is_dd_filename(p.name)
             }
             resolved.extend(sorted(dd_files))
         else:

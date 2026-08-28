@@ -130,38 +130,90 @@ From Python, `dbt_pipeline_utils.p_utils.dd_sources.pull_release_dd(repository_u
 
 All four generators accept `--version-log <path>` (Python: `version_log=`), which appends one row per model/table to a CSV: `timestamp,model,source,version,asset,content_hash`. A row is only appended when that information differs from the last recorded row for that model, so re-running against unchanged data never grows the log - only real refreshes (a new release tag, a re-published asset, or an edited local CSV) do.
 
-## Justfile
+## Justfile Workflows
 
-Run the individual generators with the root `justfile`. Override variables before the recipe name for each DD set:
+This repo now has three profiles that share common generator functions:
 
-```bash
-just DD_DIR=data_dictionaries/access \
-  MODELS_YML=models/access/__models.yml \
-  MODELS_DOCS=models/access/_column_descriptions.md \
-  TABLE_PREFIX=inc_access 
+- `justfile` (basic): one stage at a time, lowest cognitive load
+- `justfile.advanced` (advanced): explicit per-stage configuration and staged runs
+- `justfile.access` (access model): refresh-only from GitHub release artifacts to local DD directories
 
-just DD_DIR=data_dictionaries/raw \
-  SOURCES_YML=models/staging/sources.yml \
-  SOURCE_NAME=raw_study SOURCE_SCHEMA=raw sources
+Recommended two-step workflow:
 
-just DD_DIR=data_dictionaries/access \
-  SQL_DIR=models/access TABLE_PREFIX=inc_access \
-  FROM_CLAUSE_TEMPLATE="{{ source('raw_study', '{table_name}') }}" sql
-```
+1. Refresh data dictionaries once using `justfile.access` (`cdm_refresh`)
+2. Generate files using `justfile` or `justfile.advanced`
 
-`just generate` runs all three recipes. `just help` lists the variables.
+### Quick validation
 
-Local CSV/DD directories (`DD_DIR`) are the default input. To pull from a GitHub release instead of (or in addition to) `DD_DIR`, set `RELEASE_ASSETS` to one or more space-separated `repo_url|asset_name` entries:
+Check recipe availability before running generation:
 
 ```bash
-just RELEASE_ASSETS="https://github.com/o/r|patients_dd.csv" models
-
-just DD_DIR="" \
-  RELEASE_ASSETS="https://github.com/o/r|patients_dd.csv https://github.com/o/r|labs_dd.csv" \
-  RELEASE_TAG=v1.2.0 REFRESH=1 sql
+just --list --unsorted
+just -f justfile.advanced --list --unsorted
+just -f justfile.access --list --unsorted
 ```
 
-Set `VERSION_LOG=path/to/dd_versions.csv` on any recipe to track what data dictionary version was used for each model, appended only when it changes.
+### Basic profile (`justfile`)
+
+Generate a single stage run:
+
+```bash
+just STUDY_ID=brainpower PIPELINE_STAGE=src generate-stage
+just STUDY_ID=brainpower PIPELINE_STAGE=int generate-stage
+just STUDY_ID=brainpower PIPELINE_STAGE=program generate-stage
+```
+
+Stage behavior:
+
+- `src` generates `sources.yml`, source column descriptions, and src SQL models.
+- `int` and `program` generate `models.yml`, model column descriptions, and model SQL files.
+
+### Advanced profile (`justfile.advanced`)
+
+Generate all configured stages or SQL-only pipeline targets:
+
+```bash
+just -f justfile.advanced STUDY_ID=brainpower generate-all-stages
+just -f justfile.advanced generate-pipeline-sql
+```
+
+Generate one stage directly:
+
+```bash
+just -f justfile.advanced generate-stage src
+just -f justfile.advanced generate-stage int
+just -f justfile.advanced generate-stage program
+```
+
+`generate-all-stages` and `generate-stage` use the same stage behavior as the basic profile: `src` is source-facing, while `int` and `program` are model-facing.
+
+### Access refresh profile (`justfile.access`)
+
+Refresh DDs once from the three upstream models (`common`, `inc`, `kf`):
+
+```bash
+just -f justfile.access cdm_refresh
+```
+
+Then run generation in `justfile` or `justfile.advanced` using local DD paths and/or `RELEASE_ASSETS`.
+
+### Direct usage (compatibility wrappers)
+
+Each generation profile also exposes the underlying generator recipes directly, for one-off runs outside the stage/study conventions:
+
+```bash
+just DD_DIR=utils_resources/data_dictionaries/access/kf_access MODELS_YML=/tmp/models.yml generate-models-yml
+just DD_DIR=utils_resources/data_dictionaries/access/kf_access SOURCES_YML=/tmp/sources.yml SOURCE_NAME=raw SOURCE_SCHEMA=raw generate-sources-yml
+just DD_DIR=utils_resources/data_dictionaries/access/kf_access SQL_DIR=/tmp/sql generate-model-sql
+just DD_DIR=utils_resources/data_dictionaries/access/kf_access SRC_SQL_DIR=/tmp/src_sql SRC_SOURCE_NAME=raw generate-src-sql
+```
+
+The same recipes exist in `justfile.advanced` (add `-f justfile.advanced`); it also declares `DD_DIR` for this direct-usage path only, alongside its stage-specific `SRC_DD_DIR`/`INT_DD_DIR`/`PROGRAM_DD_DIR` variables.
+
+### Notes
+
+- Generation profiles accept local DD paths (`DD_DIR`/`SRC_DD_DIR`/etc.) and/or in-memory release assets (`RELEASE_ASSETS="repo|asset"`) - mix or match as needed.
+- Set `VERSION_LOG=path/to/dd_versions.csv` on any run command to track DD source/version/hash changes over time.
 
 ## Extracting one file from a ZIP release artifact
 
@@ -200,7 +252,7 @@ extract_release_artifact_file \
 You can also use the `justfile` wrapper:
 
 ```bash
-just RELEASE_REPO=kf \
+just -f justfile.access RELEASE_REPO=kf \
   RELEASE_ARTIFACT=project-artifacts.zip \
   RELEASE_INTERNAL_PATH=data_dictionaries/patients_dd.csv \
   RELEASE_OUTPUT_PATH=/tmp/patients_dd.csv \

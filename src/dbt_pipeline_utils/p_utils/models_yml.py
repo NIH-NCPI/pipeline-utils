@@ -353,8 +353,9 @@ def generate_models_yml_from_release_asset(
 
 
 def _strip_dd_suffix(stem: str) -> str:
-    """Drop a trailing '_dd'/'-dd' from a dd filename stem so it doesn't leak into the model name."""
-    return re.sub(r"[_-]dd$", "", stem, flags=re.IGNORECASE)
+    """Drop trailing dd suffix markers so they do not leak into model/table names."""
+
+    return re.sub(r"[_-](?:dd|dictionary)$", "", stem, flags=re.IGNORECASE)
 
 
 def _resolve_table_name(
@@ -364,9 +365,11 @@ def _resolve_table_name(
 ) -> str:
     """
     Resolve one dd source's table/model name: an explicit table_names
-    override, or its normalized filename stem (with a trailing "_dd"/"-dd"
-    stripped), then table_prefix prepended if given.
+    override, or its normalized filename stem (with a trailing
+    "_dd"/"-dd"/"_dictionary"/"-dictionary" stripped), then
+    table_prefix prepended if given.
     """
+
     stem = dd_filepath.stem if isinstance(dd_filepath, InMemoryDataDictionary) else Path(dd_filepath).stem
     base_name = table_names.get(stem) or normalize_name(
         _strip_dd_suffix(stem), extension="drop"
